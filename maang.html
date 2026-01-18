@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAANG Interview Prep - JustForFun</title>
+    <meta name="description" content="Curated collection of ~125 high-impact DSA problems for MAANG interviews (Meta, Apple, Amazon, Netflix, Google)">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* MAANG-specific overrides */
+        .maang-header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+        }
+
+        .maang-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #22d3ee 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+        }
+
+        .maang-subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto 20px;
+            line-height: 1.6;
+        }
+
+        .maang-badges {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .maang-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: rgba(147, 51, 234, 0.2);
+            border: 1px solid rgba(147, 51, 234, 0.4);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            margin-bottom: 20px;
+        }
+
+        .back-link:hover {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 15px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .star-badge {
+            color: #fbbf24;
+            font-weight: bold;
+        }
+
+        .source-hint {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span class="logo-icon">🎯</span>
+                <span class="logo-text">MAANG Prep</span>
+            </div>
+            
+            <div class="header-actions">
+                <!-- Global Progress -->
+                <div class="global-progress">
+                    <div class="progress-ring">
+                        <svg viewBox="0 0 36 36">
+                            <path class="progress-ring-bg"
+                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                fill="none" stroke-width="3"/>
+                            <path id="progress-ring-fill" class="progress-ring-fill"
+                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                fill="none" stroke-width="3" stroke-dasharray="0, 100"/>
+                        </svg>
+                    </div>
+                    <span id="global-progress-text" class="progress-text">0 / 119</span>
+                </div>
+
+                <!-- Theme Toggle -->
+                <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                    <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Back to Main -->
+        <a href="index.html" class="back-link">
+            ← Back to Main Tracker
+        </a>
+
+        <!-- MAANG Header -->
+        <div class="maang-header">
+            <h1 class="maang-title">🎯 MAANG Interview Prep</h1>
+            <p class="maang-subtitle">
+                A strategically curated collection of ~120 high-impact DSA problems frequently encountered 
+                in interviews at <strong>Meta, Apple, Amazon, Netflix, Google</strong> and other top-tier tech companies.
+            </p>
+            <div class="maang-badges">
+                <span class="maang-badge">📊 18 Categories</span>
+                <span class="maang-badge">💻 119 Problems</span>
+                <span class="maang-badge">⭐ High Frequency</span>
+                <span class="maang-badge">🔥 Blind 75 + NeetCode</span>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <span class="difficulty-badge easy">Easy</span>
+            </div>
+            <div class="legend-item">
+                <span class="difficulty-badge medium">Medium</span>
+            </div>
+            <div class="legend-item">
+                <span class="difficulty-badge hard">Hard</span>
+            </div>
+            <div class="legend-item">
+                <span class="star-badge">⭐</span> High Frequency / Foundational
+            </div>
+        </div>
+
+        <!-- Categories Grid -->
+        <div id="categories-grid" class="categories-grid">
+            <!-- Categories will be rendered by JavaScript -->
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p class="footer-text">MAANG Interview Prep © 2026 | JustForFun | Master these, excel in interviews! 🚀</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="maang-data.js"></script>
+    <script src="maang-app.js"></script>
+</body>
+</html>
