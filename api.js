@@ -3,7 +3,7 @@
 
 class DataSyncAPI {
     constructor() {
-        this.baseUrl = apiConfig.baseUrl;
+        this.baseUrl = '/api'; // Use relative path for Azure Functions
         this.syncInProgress = false;
         this.lastSyncTime = null;
         this.onSyncStatusChange = null;
@@ -27,33 +27,25 @@ class DataSyncAPI {
 
     /**
      * Get authorization header with access token
+     * Note: For custom auth, we might pass user ID or session token if we had one.
+     * Currently relying on userId in URL/body for this simple implementation.
      */
     async getAuthHeaders() {
-        const token = await authService.getAccessToken();
-        if (!token) {
-            return { 'Content-Type': 'application/json' };
-        }
-        return {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        };
+        return { 'Content-Type': 'application/json' };
     }
 
     /**
      * Fetch user progress from cloud
      */
     async getUserProgress(userId) {
-        if (!userId || !isAzureConfigured()) {
-            return null;
-        }
+        if (!userId) return null;
 
         try {
             this.notifySyncStatus('syncing', 'Fetching data from cloud...');
             
-            const headers = await this.getAuthHeaders();
             const response = await fetch(`${this.baseUrl}/progress/${userId}`, {
                 method: 'GET',
-                headers: headers
+                headers: { 'Content-Type': 'application/json' }
             });
 
             if (response.status === 404) {
@@ -81,9 +73,7 @@ class DataSyncAPI {
      * Save user progress to cloud
      */
     async saveUserProgress(userId, progressData) {
-        if (!userId || !isAzureConfigured()) {
-            return false;
-        }
+        if (!userId) return false;
 
         if (this.syncInProgress) {
             console.log('Sync already in progress, skipping...');
@@ -94,7 +84,6 @@ class DataSyncAPI {
             this.syncInProgress = true;
             this.notifySyncStatus('syncing', 'Saving to cloud...');
 
-            const headers = await this.getAuthHeaders();
             const payload = {
                 id: `${userId}_progress`,
                 userId: userId,
@@ -104,7 +93,7 @@ class DataSyncAPI {
 
             const response = await fetch(`${this.baseUrl}/progress`, {
                 method: 'POST',
-                headers: headers,
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
@@ -135,6 +124,7 @@ class DataSyncAPI {
             customSections: JSON.parse(localStorage.getItem('leetcode-tracker-custom-sections') || '[]'),
             notes: JSON.parse(localStorage.getItem('leetcode-tracker-notes') || '{}'),
             history: JSON.parse(localStorage.getItem('leetcode-tracker-history') || '{}'),
+            order: JSON.parse(localStorage.getItem('leetcode-tracker-order') || '[]'),
             theme: localStorage.getItem('theme') || 'dark'
         };
     }
@@ -165,6 +155,9 @@ class DataSyncAPI {
         if (data.history) {
             localStorage.setItem('leetcode-tracker-history', JSON.stringify(data.history));
         }
+        if (data.order) {
+            localStorage.setItem('leetcode-tracker-order', JSON.stringify(data.order));
+        }
         if (data.theme) {
             localStorage.setItem('theme', data.theme);
         }
@@ -176,9 +169,7 @@ class DataSyncAPI {
      * Sync local data with cloud (bidirectional merge)
      */
     async syncWithCloud(userId) {
-        if (!userId || !isAzureConfigured()) {
-            return false;
-        }
+        if (!userId) return false;
 
         try {
             // Get cloud data

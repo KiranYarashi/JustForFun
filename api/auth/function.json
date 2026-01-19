@@ -1,0 +1,36 @@
+{
+  "bindings": [
+    {
+      "authLevel": "anonymous",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": ["post"],
+      "route": "auth/{action}"
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "res"
+    },
+    {
+      "type": "cosmosDB",
+      "direction": "out",
+      "name": "outputDocument",
+      "databaseName": "LeetCodeTracker",
+      "collectionName": "Users",
+      "createIfNotExists": true,
+      "connectionStringSetting": "CosmosDbConnectionString"
+    },
+    {
+      "type": "cosmosDB",
+      "direction": "in",
+      "name": "userDocument",
+      "databaseName": "LeetCodeTracker",
+      "collectionName": "Users",
+      "connectionStringSetting": "CosmosDbConnectionString",
+      "id": "{username}",
+      "partitionKey": "{username}"
+    }
+  ]
+}

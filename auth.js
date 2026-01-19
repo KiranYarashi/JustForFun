@@ -1,200 +1,137 @@
-// ===== Authentication Service =====
-// Handles Microsoft Entra ID authentication using MSAL.js
+// ===== Authentication Service (Custom) =====
+// Handles Custom Username/Password Authentication
 
 class AuthService {
     constructor() {
-        this.msalInstance = null;
-        this.account = null;
+        this.user = null;
         this.initialized = false;
-        this.onAuthStateChange = null; // Callback for auth state changes
+        this.onAuthStateChange = null; // Callback
+        this.baseUrl = '/api/auth';
     }
 
     /**
-     * Initialize MSAL instance and check for existing sessions
+     * Initialize auth service (check local session)
      */
     async initialize() {
-        if (!isAzureConfigured()) {
-            console.warn('Azure AD not configured. Running in offline mode.');
-            this.initialized = true;
-            return false;
-        }
-
-        try {
-            this.msalInstance = new msal.PublicClientApplication(msalConfig);
-            await this.msalInstance.initialize();
-            
-            // Handle redirect response if any
-            const response = await this.msalInstance.handleRedirectPromise();
-            if (response) {
-                this.account = response.account;
-                this.notifyAuthStateChange();
-            } else {
-                // Check for existing accounts
-                const accounts = this.msalInstance.getAllAccounts();
-                if (accounts.length > 0) {
-                    this.account = accounts[0];
-                    this.notifyAuthStateChange();
-                }
+        const savedUser = localStorage.getItem('leetcode-tracker-user');
+        if (savedUser) {
+            try {
+                this.user = JSON.parse(savedUser);
+                console.log('Restored session for:', this.user.username);
+            } catch (e) {
+                console.error('Failed to parse saved user', e);
+                localStorage.removeItem('leetcode-tracker-user');
             }
-            
-            this.initialized = true;
-            console.log('Auth service initialized', this.account ? 'with account' : 'no account');
-            return true;
-        } catch (error) {
-            console.error('Failed to initialize auth service:', error);
-            this.initialized = true;
-            return false;
         }
+        this.initialized = true;
+        this.notifyAuthStateChange();
+        return true;
     }
 
     /**
-     * Sign in user with Microsoft popup
+     * Login User
      */
-    async login() {
-        if (!this.msalInstance) {
-            throw new Error('Auth service not initialized or Azure AD not configured');
-        }
-
+    async login(username, password) {
         try {
-            const response = await this.msalInstance.loginPopup(loginRequest);
-            this.account = response.account;
-            this.notifyAuthStateChange();
-            console.log('Login successful:', this.account.username);
-            return this.account;
-        } catch (error) {
-            console.error('Login failed:', error);
-            // Handle user cancelled login
-            if (error.errorCode === 'user_cancelled') {
-                throw new Error('Login cancelled by user');
+            // Need to pass username in query for Azure Function binding
+            const response = await fetch(`${this.baseUrl}/login?username=${encodeURIComponent(username)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Login failed');
             }
+
+            const data = await response.json();
+            this.setSession(data);
+            return this.user;
+        } catch (error) {
+            console.error('Login error:', error);
             throw error;
         }
     }
 
     /**
-     * Sign in user with redirect (alternative to popup)
+     * Register User
      */
-    async loginRedirect() {
-        if (!this.msalInstance) {
-            throw new Error('Auth service not initialized');
+    async register(username, password) {
+        try {
+            const response = await fetch(`${this.baseUrl}/register?username=${encodeURIComponent(username)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Registration failed');
+            }
+
+            const data = await response.json();
+            this.setSession(data);
+            return this.user;
+        } catch (error) {
+            console.error('Registration error:', error);
+            throw error;
         }
-        await this.msalInstance.loginRedirect(loginRequest);
+    }
+
+    setSession(data) {
+        this.user = {
+            username: data.username,
+            userId: data.userId, // In this case, same as username
+            displayName: data.username
+        };
+        localStorage.setItem('leetcode-tracker-user', JSON.stringify(this.user));
+        this.notifyAuthStateChange();
     }
 
     /**
-     * Sign out user
+     * Logout
      */
     async logout() {
-        if (!this.msalInstance) {
-            this.account = null;
-            this.notifyAuthStateChange();
-            return;
-        }
-
-        try {
-            await this.msalInstance.logoutPopup({
-                postLogoutRedirectUri: msalConfig.auth.postLogoutRedirectUri,
-                mainWindowRedirectUri: msalConfig.auth.postLogoutRedirectUri
-            });
-            this.account = null;
-            this.notifyAuthStateChange();
-        } catch (error) {
-            console.error('Logout failed:', error);
-            // Force clear account anyway
-            this.account = null;
-            this.notifyAuthStateChange();
-        }
+        this.user = null;
+        localStorage.removeItem('leetcode-tracker-user');
+        this.notifyAuthStateChange();
     }
 
     /**
-     * Get access token for API calls
+     * Get Access Token (Mock - removed MSAL)
      */
     async getAccessToken() {
-        if (!this.msalInstance || !this.account) {
-            return null;
-        }
-
-        try {
-            const response = await this.msalInstance.acquireTokenSilent({
-                ...tokenRequest,
-                account: this.account
-            });
-            return response.accessToken;
-        } catch (error) {
-            console.warn('Silent token acquisition failed, trying popup:', error);
-            try {
-                const response = await this.msalInstance.acquireTokenPopup(tokenRequest);
-                return response.accessToken;
-            } catch (popupError) {
-                console.error('Failed to acquire token:', popupError);
-                return null;
-            }
-        }
+        return null; // No bearer token needed for anonymous API functions
     }
 
-    /**
-     * Check if user is authenticated
-     */
     isAuthenticated() {
-        return this.account !== null;
+        return !!this.user;
     }
 
-    /**
-     * Get current account info
-     */
-    getAccount() {
-        return this.account;
-    }
-
-    /**
-     * Get unique user ID for database storage
-     */
     getUserId() {
-        return this.account?.localAccountId || null;
+        return this.user?.userId || null;
     }
 
-    /**
-     * Get user display name
-     */
     getDisplayName() {
-        return this.account?.name || this.account?.username || 'User';
+        return this.user?.displayName || 'User';
     }
 
-    /**
-     * Get user email
-     */
-    getEmail() {
-        return this.account?.username || null;
-    }
-
-    /**
-     * Get user initials for avatar
-     */
     getInitials() {
         const name = this.getDisplayName();
-        const parts = name.split(' ');
-        if (parts.length >= 2) {
-            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-        }
         return name.substring(0, 2).toUpperCase();
     }
 
-    /**
-     * Set callback for auth state changes
-     */
     setAuthStateChangeCallback(callback) {
         this.onAuthStateChange = callback;
     }
 
-    /**
-     * Notify listeners of auth state change
-     */
     notifyAuthStateChange() {
         if (this.onAuthStateChange) {
-            this.onAuthStateChange(this.isAuthenticated(), this.account);
+            this.onAuthStateChange(this.isAuthenticated(), this.user);
         }
     }
 }
 
-// Create global auth service instance
+// Global instance
 const authService = new AuthService();

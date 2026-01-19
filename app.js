@@ -12,62 +12,68 @@ let categoryOrder = []; // Store order of category IDs
 let isReorderMode = false; // Toggle for reordering UI
 
 // ===== Initialize App =====
+// ===== Initialize App =====
 document.addEventListener('DOMContentLoaded', () => {
-    initTheme();
-    
-    // Initialize Auth
-    authService.initialize().then(isInitialized => {
-        if (isInitialized) {
-            updateAuthUI();
-            
-            // If already logged in, sync with cloud
-            if (authService.isAuthenticated()) {
-                const userId = authService.getUserId();
-                dataSync.syncWithCloud(userId).then(() => {
-                    // Reload state after sync
-                    loadState();
-                    loadMaangState();
-                    loadCustomProblems();
-                    loadCustomSections();
-                    loadNotes();
-                    loadHistory();
-                    loadCategoryOrder(); // Load order
-                    renderCategories();
-                    renderMaangCategories();
-                    updateAllTrackers();
-                    updateTabCounts();
-                });
+    try {
+        initTheme();
+        
+        // Initialize Auth
+        authService.initialize().then(isInitialized => {
+            if (isInitialized) {
+                updateAuthUI();
+                
+                // If already logged in, sync with cloud
+                if (authService.isAuthenticated()) {
+                    const userId = authService.getUserId();
+                    dataSync.syncWithCloud(userId).then(() => {
+                        // Reload state after sync
+                        loadState();
+                        loadMaangState();
+                        loadCustomProblems();
+                        loadCustomSections();
+                        loadNotes();
+                        loadHistory();
+                        loadCategoryOrder(); // Load order
+                        renderCategories();
+                        renderMaangCategories();
+                        updateAllTrackers();
+                        updateTabCounts();
+                    });
+                }
             }
-        }
-    });
+        });
 
-    loadState();
-    loadMaangState();
-    loadCustomProblems();
-    loadCustomSections();
-    loadNotes();
-    loadHistory();
-    loadCategoryOrder(); // Load order
-    renderCategories();
-    renderMaangCategories();
-    updateAllTrackers();
-    updateTabCounts();
-    checkCookieConsent();
-    checkFirstTimeUser();
-    
-    // Register sync status callback
-    dataSync.setSyncStatusCallback((status, message) => {
-        const statusEl = document.getElementById('sync-status');
-        if (statusEl) {
-            statusEl.textContent = message;
-            if (status === 'error') statusEl.style.color = '#ef4444';
-            else if (status === 'syncing') statusEl.style.color = '#f59e0b';
-            else statusEl.style.color = 'rgba(255, 255, 255, 0.7)';
-        }
-    });
-
-    // Show Splash Screen on load (if not in debug/fast mode)
-    showSplashScreen();
+        loadState();
+        loadMaangState();
+        loadCustomProblems();
+        loadCustomSections();
+        loadNotes();
+        loadHistory();
+        loadCategoryOrder(); // Load order
+        renderCategories();
+        renderMaangCategories();
+        updateAllTrackers();
+        updateTabCounts();
+        checkCookieConsent();
+        checkFirstTimeUser();
+        
+        // Register sync status callback
+        dataSync.setSyncStatusCallback((status, message) => {
+            const statusEl = document.getElementById('sync-status');
+            if (statusEl) {
+                statusEl.textContent = message;
+                if (status === 'error') statusEl.style.color = '#ef4444';
+                else if (status === 'syncing') statusEl.style.color = '#f59e0b';
+                else statusEl.style.color = 'rgba(255, 255, 255, 0.7)';
+            }
+        });
+    } catch (error) {
+        console.error("Initialization Error:", error);
+    } finally {
+        // Show Splash Screen on load (if not in debug/fast mode)
+        // Ensures it runs even if init fails
+        showSplashScreen();
+    }
 });
 
 // ===== Splash Screen Logic =====
@@ -120,38 +126,92 @@ function showSplashScreen() {
 
 // ===== Auth Functions =====
 // ===== Auth Functions =====
+// ===== Auth Functions =====
 async function handleLogin() {
-    console.log('Sign In button clicked');
-    try {
-        if (typeof isAzureConfigured === 'undefined') {
-            alert('Error: authConfig.js is not loaded correctly. Please check console.');
-            return;
-        }
-
-        if (!isAzureConfigured()) {
-            alert('Azure AD is not configured yet!\n\nPlease open "authConfig.js" and add your Client ID and Tenant ID to enable sign-in.');
-            return;
-        }
-
-        // Show sarcastic roast modal first
-        if (typeof showRoastModal === 'function') {
-            showRoastModal();
-        } else {
-            console.error('showRoastModal is missing');
-            performLogin(); // Fallback
-        }
-    } catch (e) {
-        alert('An error occurred: ' + e.message);
-        console.error(e);
+    // Show sarcastic roast modal first
+    if (typeof showRoastModal === 'function') {
+        showRoastModal();
+    } else {
+        performLogin(); // Fallback
     }
 }
 
 // Actual login called after user accepts the roast
+// Actual login called after user accepts the roast
 async function performLogin() {
     closeRoastModal();
+    showAuthModal();
+}
+
+// ===== Custom Auth UI Handlers =====
+let authMode = 'login'; // 'login' or 'register'
+
+function showAuthModal() {
+    authMode = 'login';
+    updateAuthModalUI();
+    document.getElementById('auth-modal').classList.remove('hidden');
+    document.getElementById('auth-username').focus();
+    document.getElementById('auth-error-msg').classList.add('hidden');
+    document.getElementById('auth-form').reset();
+}
+
+function closeAuthModal() {
+    document.getElementById('auth-modal').classList.add('hidden');
+}
+
+function toggleAuthMode(mode) {
+    authMode = mode;
+    updateAuthModalUI();
+}
+
+function updateAuthModalUI() {
+    const title = document.getElementById('auth-modal-title');
+    const submitBtn = document.getElementById('auth-submit-btn');
+    const toggleLogin = document.getElementById('auth-toggle-login');
+    const toggleRegister = document.getElementById('auth-toggle-register');
+    const errorMsg = document.getElementById('auth-error-msg');
+
+    errorMsg.classList.add('hidden');
+
+    if (authMode === 'login') {
+        title.textContent = 'Sign In';
+        submitBtn.textContent = 'Sign In';
+        toggleLogin.classList.remove('hidden');
+        toggleRegister.classList.add('hidden');
+    } else {
+        title.textContent = 'Create Account';
+        submitBtn.textContent = 'Create Account';
+        toggleLogin.classList.add('hidden');
+        toggleRegister.classList.remove('hidden');
+    }
+}
+
+async function handleAuthSubmit(event) {
+    event.preventDefault();
     
+    const username = document.getElementById('auth-username').value.trim();
+    const password = document.getElementById('auth-password').value.trim();
+    const errorMsg = document.getElementById('auth-error-msg');
+    const submitBtn = document.getElementById('auth-submit-btn');
+    
+    if (!username || !password) {
+        showAuthError('Please fill in all fields');
+        return;
+    }
+
     try {
-        await authService.login();
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Processing...';
+        showAuthError(''); // Clear error
+
+        if (authMode === 'login') {
+            await authService.login(username, password);
+        } else {
+            await authService.register(username, password);
+        }
+
+        // Success
+        closeAuthModal();
         updateAuthUI();
         
         // Sync after login
@@ -162,12 +222,24 @@ async function performLogin() {
             
             await dataSync.syncWithCloud(userId);
             
-            // Reload everything
             location.reload(); 
         }
+
     } catch (error) {
-        console.error('Login error:', error);
-        alert('Login failed: ' + error.message);
+        console.error('Auth error:', error);
+        showAuthError(error.message || 'Authentication failed');
+        submitBtn.disabled = false;
+        updateAuthModalUI(); // Reset button text
+    }
+}
+
+function showAuthError(msg) {
+    const el = document.getElementById('auth-error-msg');
+    if (msg) {
+        el.textContent = msg;
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
     }
 }
 

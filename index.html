@@ -9,8 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <!-- Azure MSAL.js for authentication -->
-    <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Removed MSAL.js -->
 </head>
 <body>
     <!-- Splash Screen -->
@@ -411,6 +411,40 @@
         </div>
     </div>
 
+    <!-- Auth Modal (Custom) -->
+    <div id="auth-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeAuthModal()"></div>
+        <div class="modal-content auth-modal-content">
+            <div class="modal-header">
+                <h2 id="auth-modal-title">Sign In</h2>
+                <button class="modal-close" onclick="closeAuthModal()">×</button>
+            </div>
+            
+            <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+                <div class="form-group">
+                    <label for="auth-username">Username</label>
+                    <input type="text" id="auth-username" placeholder="Enter username" required minlength="3">
+                </div>
+                
+                <div class="form-group">
+                    <label for="auth-password">Password</label>
+                    <input type="password" id="auth-password" placeholder="Enter password" required minlength="4">
+                </div>
+                
+                <p id="auth-error-msg" class="error-text hidden"></p>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary" id="auth-submit-btn">Sign In</button>
+                </div>
+            </form>
+
+            <div class="auth-toggle-text">
+                <p id="auth-toggle-login">New here? <a href="#" onclick="toggleAuthMode('register')">Create an account</a></p>
+                <p id="auth-toggle-register" class="hidden">Already have an account? <a href="#" onclick="toggleAuthMode('login')">Sign In</a></p>
+            </div>
+        </div>
+    </div>
+
     <!-- Sarcastic Login Modal -->
     <div id="roast-login-modal" class="modal hidden" style="z-index: 9999;">
         <div class="modal-content roast-content">
@@ -442,7 +476,7 @@
 
     <script src="data.js"></script>
     <script src="maang-data.js"></script>
-    <script src="authConfig.js"></script>
+    <!-- Config removed: Custom Auth uses API -->
     <script src="auth.js"></script>
     <script src="api.js"></script>
     <script src="app.js"></script>
