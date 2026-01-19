@@ -169,9 +169,7 @@ function updateAuthModalUI() {
     const submitBtn = document.getElementById('auth-submit-btn');
     const toggleLogin = document.getElementById('auth-toggle-login');
     const toggleRegister = document.getElementById('auth-toggle-register');
-    const errorMsg = document.getElementById('auth-error-msg');
-
-    errorMsg.classList.add('hidden');
+    // NOTE: Do NOT hide errorMsg here - it breaks error display after failed auth attempts
 
     if (authMode === 'login') {
         title.textContent = 'Sign In';
