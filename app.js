@@ -244,7 +244,18 @@ const loginRoasts = [
     "Authentication error. Git blame: you.",
     "Wrong credentials. This isn't a recoverable exception.",
     "Invalid login. Your password is in another castle.",
-    "Error 401: User is sus."
+    "Error 401: User is sus.",
+    // NEW ROASTS
+    "Per my last login attempt... did you even read the password hint?",
+    "Let's circle back on this after you remember your credentials.",
+    "This is a high-priority blocker: your memory.",
+    "Synergy between your fingers and brain: not found.",
+    "Please do the needful and type correctly.",
+    "404: Brain cells not found during password entry.",
+    "Your login attempt has been added to the sprint backlog... of failures.",
+    "Exception thrown: UserIsNotThatSmartException",
+    "Looks like someone's been copy-pasting from the wrong password manager.",
+    "sudo make me login? Denied. You're not root here."
 ];
 
 const registerRoasts = [
@@ -259,7 +270,18 @@ const registerRoasts = [
     "Error: Username already exists in the multiverse of mid developers.",
     "Denied. Your resume lied about your ability to follow instructions.",
     "Account creation failed. Even MongoDB wouldn't store your data.",
-    "Invalid input. This is why we can't have nice things."
+    "Invalid input. This is why we can't have nice things.",
+    // NEW ROASTS
+    "Registration rejected. HR will reach out if there's a fit.",
+    "Your application has been moved to the 'maybe never' folder.",
+    "Please resubmit after acquiring basic reading comprehension.",
+    "Error: Username complexity exceeds system capabilities (just kidding, it's too dumb).",
+    "Account creation is on hold pending approval from someone who cares.",
+    "The system has decided you're not enterprise-ready.",
+    "Your sign-up was flagged by our advanced 'no thanks' algorithm.",
+    "Registration error: Please leverage a different username going forward.",
+    "This username has been optimized out of existence.",
+    "Your account request is currently in stakeholder review... forever."
 ];
 
 function showAuthError(msg) {
@@ -268,7 +290,14 @@ function showAuthError(msg) {
         // Pick roasts based on current auth mode
         const roastList = authMode === 'register' ? registerRoasts : loginRoasts;
         const roast = roastList[Math.floor(Math.random() * roastList.length)];
-        el.innerHTML = `<strong>${msg}</strong><br><span style="font-size: 0.85em; opacity: 0.8;">${roast}</span>`;
+        el.innerHTML = `
+            <div style="color: #ff4444; font-weight: bold; margin-bottom: 6px;">⚠️ ${msg}</div>
+            <div style="color: #ff8888; font-size: 0.85em; font-style: italic;">${roast}</div>
+        `;
+        el.style.background = 'rgba(255, 68, 68, 0.1)';
+        el.style.border = '1px solid rgba(255, 68, 68, 0.3)';
+        el.style.borderRadius = '8px';
+        el.style.padding = '12px';
         el.classList.remove('hidden');
     } else {
         el.classList.add('hidden');
