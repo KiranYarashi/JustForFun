@@ -2,6 +2,9 @@
     "name": "leetcode-tracker-api",
     "version": "1.0.0",
     "description": "API for LeetCode Tracker",
+    "engines": {
+        "node": "18"
+    },
     "scripts": {
       "start": "func start",
       "test": "echo \"No tests yet...\""

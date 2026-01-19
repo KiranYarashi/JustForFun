@@ -1,0 +1,14 @@
+{
+  "configurations": {
+    "production": {
+      "appLocation": ".",
+      "apiLocation": "api",
+      "outputLocation": ".",
+      "apiLanguage": "node",
+      "apiVersion": "16",
+      "deploy": {
+        "noAjax": true
+      }
+    }
+  }
+}
