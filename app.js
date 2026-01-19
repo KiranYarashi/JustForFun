@@ -76,43 +76,107 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// ===== Splash Screen Logic =====
+// ===== Splash Screen Logic with Shame Streak =====
 function showSplashScreen() {
     const splash = document.getElementById('splash-screen');
     const quoteEl = document.getElementById('splash-quote');
     
-    // Developer Quotes
-    const quotes = [
-        "Compiling... just kidding, it's JavaScript.",
-        "It works on my machine.",
-        "Debugging: Being the detective in a crime where you are the murderer.",
-        "6 hours of debugging can save you 5 minutes of reading documentation.",
-        "To understand recursion, you must first understand recursion.",
-        "Ctrl+C, Ctrl+V... Stack Overflow is my backend.",
-        "Git commit -m 'fixed stuff'",
-        "One more semi-colon...",
-        "Why do Java developers wear glasses? Because they don't C#.",
-        "Code is like humor. When you have to explain it, it's bad.",
-        "I don't always test my code, but when I do, I do it in production.",
-        "Per my last email... (Corporate speak for 'Can you read?')",
-        "It's not a bug, it's an undocumented feature.",
-        "Git push --force... because sometimes violence is the answer.",
-        "Deleting production database in 3... 2... 1...",
-        "Manager: 'Just a small change.' Narrator: 'It was not.'",
-        "Converting caffeine into anxiety and code.",
-        "CSS is awesome! *Table flip*",
-        "My code is garbage, but it runs. DO NOT TOUCH IT.",
-        "How do I exit Vim? Send help.",
-        "Simulating productivity until 5 PM...",
-        "Deploying on Friday? You brave soul.",
-        "Walking into the daily standup like 🧟",
-        "Zero days since last merge conflict.",
-        "Real programmers count from 0.",
-        "Sudo make me a sandwich."
-    ];
+    // Calculate days since last visit
+    const lastVisit = localStorage.getItem('leetcode-tracker-last-visit');
+    const today = new Date().toDateString();
+    let daysMissed = 0;
+    
+    if (lastVisit) {
+        const lastDate = new Date(lastVisit);
+        const now = new Date();
+        const diffTime = now - lastDate;
+        daysMissed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    }
+    
+    // Update last visit to today
+    localStorage.setItem('leetcode-tracker-last-visit', today);
+    
+    // Shame Streak roasts based on days missed
+    const shameRoasts = {
+        // Came back same day or next day - normal quotes
+        consistent: [
+            "Compiling... just kidding, it's JavaScript.",
+            "It works on my machine.",
+            "Debugging: Being the detective in a crime where you are the murderer.",
+            "6 hours of debugging can save you 5 minutes of reading documentation.",
+            "To understand recursion, you must first understand recursion.",
+            "Ctrl+C, Ctrl+V... Stack Overflow is my backend.",
+            "Git commit -m 'fixed stuff'",
+            "One more semi-colon...",
+            "Why do Java developers wear glasses? Because they don't C#.",
+            "Code is like humor. When you have to explain it, it's bad.",
+            "I don't always test my code, but when I do, I do it in production.",
+            "Per my last email... (Corporate speak for 'Can you read?')",
+            "It's not a bug, it's an undocumented feature.",
+            "Git push --force... because sometimes violence is the answer.",
+            "Converting caffeine into anxiety and code.",
+            "CSS is awesome! *Table flip*",
+            "My code is garbage, but it runs. DO NOT TOUCH IT.",
+            "How do I exit Vim? Send help.",
+            "Simulating productivity until 5 PM...",
+            "Real programmers count from 0.",
+            "Sudo make me a sandwich."
+        ],
+        // Missed 2-3 days
+        slacking: [
+            "Welcome back, tourist. 🏝️",
+            "Oh, you remembered this exists? Cool.",
+            "Consistency is key, but so is sleep, I guess.",
+            "Your streak died. Just like your motivation.",
+            "Back from vacation? The grind doesn't pause.",
+            "Plot twist: LeetCode problems didn't solve themselves.",
+            "The prodigal coder returns... empty-handed.",
+            "Did you think the algorithms would wait for you?",
+            "Your future interviewer isn't taking days off.",
+            "Break's over. Time to pretend you're productive."
+        ],
+        // Missed 4-7 days
+        disappointing: [
+            "A WEEK? Really? The audacity.",
+            "Your GitHub contribution graph is crying.",
+            "Welcome back, stranger. We barely recognized you.",
+            "That's not a break, that's abandonment.",
+            "Did you forget your password or your ambition?",
+            "Your competitors just solved 50 problems. You solved zero.",
+            "The only thing consistent about you is inconsistency.",
+            "Back from 'I'll do it tomorrow' land?",
+            "Your array of excuses is out of bounds.",
+            "Even your IDE missed you. Just kidding, it crashed anyway."
+        ],
+        // Missed 8+ days
+        shameful: [
+            "🚨 MISSING PERSON ALERT: Found wandering back after " + daysMissed + " days.",
+            "At this point, just put 'gave up' on your resume.",
+            "Your streak didn't just break, it filed for bankruptcy.",
+            "Welcome back! Your skills have deprecated during your absence.",
+            "Two weeks? Did you switch careers and switch back?",
+            "The only thing you've been consistent at is disappointing yourself.",
+            "Your GitHub is greener on the 'Take a Break' side.",
+            "Did you get lost on the way to Stack Overflow?",
+            "Your DSA skills have expired. Please renew.",
+            "Plot twist: You're the unsolved problem now."
+        ]
+    };
+    
+    // Select appropriate roast category
+    let selectedQuotes;
+    if (daysMissed <= 1) {
+        selectedQuotes = shameRoasts.consistent;
+    } else if (daysMissed <= 3) {
+        selectedQuotes = shameRoasts.slacking;
+    } else if (daysMissed <= 7) {
+        selectedQuotes = shameRoasts.disappointing;
+    } else {
+        selectedQuotes = shameRoasts.shameful;
+    }
     
     if (quoteEl) {
-        quoteEl.textContent = quotes[Math.floor(Math.random() * quotes.length)];
+        quoteEl.textContent = selectedQuotes[Math.floor(Math.random() * selectedQuotes.length)];
     }
     
     // Hide after total time (approx 3-4s)
