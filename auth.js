@@ -42,12 +42,13 @@ class AuthService {
 
             if (!response.ok) {
                 let errorMessage = 'Login failed';
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    const err = await response.json();
-                    errorMessage = err.error || errorMessage;
-                } else {
-                    const text = await response.text();
+                const text = await response.text();
+                // Try to parse as JSON first (API returns JSON but sometimes with wrong content-type)
+                try {
+                    const parsed = JSON.parse(text);
+                    errorMessage = parsed.error || errorMessage;
+                } catch (e) {
+                    // Not JSON, use raw text
                     errorMessage = text || errorMessage;
                 }
                 throw new Error(errorMessage);
@@ -75,12 +76,13 @@ class AuthService {
 
             if (!response.ok) {
                 let errorMessage = 'Registration failed';
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    const err = await response.json();
-                    errorMessage = err.error || errorMessage;
-                } else {
-                    const text = await response.text();
+                const text = await response.text();
+                // Try to parse as JSON first (API returns JSON but sometimes with wrong content-type)
+                try {
+                    const parsed = JSON.parse(text);
+                    errorMessage = parsed.error || errorMessage;
+                } catch (e) {
+                    // Not JSON, use raw text
                     errorMessage = text || errorMessage;
                 }
                 throw new Error(errorMessage);
