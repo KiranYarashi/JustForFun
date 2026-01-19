@@ -161,6 +161,8 @@ function closeAuthModal() {
 
 function toggleAuthMode(mode) {
     authMode = mode;
+    // Clear error when switching between login/register
+    showAuthError('');
     updateAuthModalUI();
 }
 
@@ -311,14 +313,14 @@ function showAuthError(msg) {
         const roastList = authMode === 'register' ? registerRoasts : loginRoasts;
         const roast = roastList[Math.floor(Math.random() * roastList.length)];
         el.innerHTML = `
-            <div style="color: #ff3333; font-weight: bold; font-size: 1.1em; margin-bottom: 8px;">❌ ${msg}</div>
-            <div style="background: linear-gradient(90deg, #ffd700, #ffeb3b); color: #1a1a2e; padding: 8px 12px; border-radius: 6px; font-size: 0.9em; font-weight: 500; display: inline-block;">💬 "${roast}"</div>
+            <div style="color: #ff4444; font-weight: 600; font-size: 0.95em; margin-bottom: 6px;">❌ ${msg}</div>
+            <div style="color: rgba(255, 255, 255, 0.7); font-size: 0.85em; font-style: italic;">💬 ${roast}</div>
         `;
-        el.style.background = 'rgba(255, 50, 50, 0.08)';
-        el.style.border = '2px solid #ff3333';
-        el.style.borderRadius = '10px';
-        el.style.padding = '16px';
-        el.style.marginTop = '12px';
+        el.style.background = 'transparent';
+        el.style.border = 'none';
+        el.style.borderRadius = '0';
+        el.style.padding = '8px 0';
+        el.style.marginTop = '8px';
         el.classList.remove('hidden');
     } else {
         el.classList.add('hidden');
