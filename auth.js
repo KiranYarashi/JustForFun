@@ -41,8 +41,16 @@ class AuthService {
             });
 
             if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Login failed');
+                let errorMessage = 'Login failed';
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const err = await response.json();
+                    errorMessage = err.error || errorMessage;
+                } else {
+                    const text = await response.text();
+                    errorMessage = text || errorMessage;
+                }
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();
@@ -66,8 +74,16 @@ class AuthService {
             });
 
             if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Registration failed');
+                let errorMessage = 'Registration failed';
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const err = await response.json();
+                    errorMessage = err.error || errorMessage;
+                } else {
+                    const text = await response.text();
+                    errorMessage = text || errorMessage;
+                }
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();
