@@ -234,7 +234,7 @@ async function handleAuthSubmit(event) {
 }
 
 // Sarcastic error messages for auth failures
-const authErrorRoasts = [
+const loginRoasts = [
     "Wrong credentials? Shocker. Try remembering your password like you remember Stack Overflow syntax.",
     "Authentication failed. Maybe try 'password123' like everyone else?",
     "Invalid credentials. Your typing skills are as good as your debugging skills.",
@@ -249,11 +249,27 @@ const authErrorRoasts = [
     "Error 401: User is sus."
 ];
 
+const registerRoasts = [
+    "Username taken. Someone beat you to mediocrity.",
+    "Registration failed. Even NPM has standards.",
+    "That username's gone. Like your motivation to solve LeetCode problems.",
+    "Account creation denied. The universe has rejected your application.",
+    "Invalid format. Did HR write your password requirements?",
+    "Username exists. Great minds think alike... and so do average ones.",
+    "Registration error. Have you tried 'xX_L33tC0d3r_Xx'?",
+    "Sign-up failed. Your creativity is as null as your pointer.",
+    "Error: Username already exists in the multiverse of mid developers.",
+    "Denied. Your resume lied about your ability to follow instructions.",
+    "Account creation failed. Even MongoDB wouldn't store your data.",
+    "Invalid input. This is why we can't have nice things."
+];
+
 function showAuthError(msg) {
     const el = document.getElementById('auth-error-msg');
     if (msg) {
-        // Add a sarcastic twist to the error
-        const roast = authErrorRoasts[Math.floor(Math.random() * authErrorRoasts.length)];
+        // Pick roasts based on current auth mode
+        const roastList = authMode === 'register' ? registerRoasts : loginRoasts;
+        const roast = roastList[Math.floor(Math.random() * roastList.length)];
         el.innerHTML = `<strong>${msg}</strong><br><span style="font-size: 0.85em; opacity: 0.8;">${roast}</span>`;
         el.classList.remove('hidden');
     } else {
