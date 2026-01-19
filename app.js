@@ -245,7 +245,6 @@ const loginRoasts = [
     "Wrong credentials. This isn't a recoverable exception.",
     "Invalid login. Your password is in another castle.",
     "Error 401: User is sus.",
-    // NEW ROASTS
     "Per my last login attempt... did you even read the password hint?",
     "Let's circle back on this after you remember your credentials.",
     "This is a high-priority blocker: your memory.",
@@ -255,7 +254,18 @@ const loginRoasts = [
     "Your login attempt has been added to the sprint backlog... of failures.",
     "Exception thrown: UserIsNotThatSmartException",
     "Looks like someone's been copy-pasting from the wrong password manager.",
-    "sudo make me login? Denied. You're not root here."
+    "sudo make me login? Denied. You're not root here.",
+    // 10 MORE NEW ROASTS
+    "Your password and your code have something in common: both don't work.",
+    "This login failed harder than your last production deploy.",
+    "Have you considered a career that doesn't require passwords?",
+    "Your credentials are as valid as your LinkedIn endorsements.",
+    "Login denied. Your manager has been CC'd on this failure.",
+    "Error: Password rejected by all 12 microservices.",
+    "This attempt has been forwarded to the appropriate trash folder.",
+    "Authentication failed. Please update your resume.",
+    "Your login was rejected during code review.",
+    "Congratulations! You've unlocked the 'Still Can't Login' achievement."
 ];
 
 const registerRoasts = [
@@ -271,7 +281,6 @@ const registerRoasts = [
     "Denied. Your resume lied about your ability to follow instructions.",
     "Account creation failed. Even MongoDB wouldn't store your data.",
     "Invalid input. This is why we can't have nice things.",
-    // NEW ROASTS
     "Registration rejected. HR will reach out if there's a fit.",
     "Your application has been moved to the 'maybe never' folder.",
     "Please resubmit after acquiring basic reading comprehension.",
@@ -281,7 +290,18 @@ const registerRoasts = [
     "Your sign-up was flagged by our advanced 'no thanks' algorithm.",
     "Registration error: Please leverage a different username going forward.",
     "This username has been optimized out of existence.",
-    "Your account request is currently in stakeholder review... forever."
+    "Your account request is currently in stakeholder review... forever.",
+    // 10 MORE NEW ROASTS
+    "Your account was denied during the sprint planning.",
+    "Registration blocked by our 'No Juniors' firewall.",
+    "Error 403: Username requires more years of experience.",
+    "Your sign-up has been escalated to nobody.",
+    "Account creation failed: Insufficient coffee in your system.",
+    "The DevOps team has declined your infrastructure request.",
+    "Your username failed the automated personality test.",
+    "Registration error: Please align with best practices and try again.",
+    "Account denied. Your GitHub has too many forked repos.",
+    "Sign-up rejected. The algorithm knows what you did last summer."
 ];
 
 function showAuthError(msg) {
@@ -291,13 +311,14 @@ function showAuthError(msg) {
         const roastList = authMode === 'register' ? registerRoasts : loginRoasts;
         const roast = roastList[Math.floor(Math.random() * roastList.length)];
         el.innerHTML = `
-            <div style="color: #ff4444; font-weight: bold; margin-bottom: 6px;">⚠️ ${msg}</div>
-            <div style="color: #ff8888; font-size: 0.85em; font-style: italic;">${roast}</div>
+            <div style="color: #ff3333; font-weight: bold; font-size: 1.1em; margin-bottom: 8px;">❌ ${msg}</div>
+            <div style="background: linear-gradient(90deg, #ffd700, #ffeb3b); color: #1a1a2e; padding: 8px 12px; border-radius: 6px; font-size: 0.9em; font-weight: 500; display: inline-block;">💬 "${roast}"</div>
         `;
-        el.style.background = 'rgba(255, 68, 68, 0.1)';
-        el.style.border = '1px solid rgba(255, 68, 68, 0.3)';
-        el.style.borderRadius = '8px';
-        el.style.padding = '12px';
+        el.style.background = 'rgba(255, 50, 50, 0.08)';
+        el.style.border = '2px solid #ff3333';
+        el.style.borderRadius = '10px';
+        el.style.padding = '16px';
+        el.style.marginTop = '12px';
         el.classList.remove('hidden');
     } else {
         el.classList.add('hidden');
