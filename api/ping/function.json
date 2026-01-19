@@ -20,7 +20,7 @@
       "databaseName": "LeetCodeTracker",
       "containerName": "Users",
       "createIfNotExists": true,
-      "connectionStringSetting": "CosmosDbConnectionString",
+      "connection": "CosmosDbConnectionString",
       "partitionKey": "/username"
     },
     {
@@ -30,7 +30,7 @@
       "databaseName": "LeetCodeTracker",
       "containerName": "UserProgress",
       "createIfNotExists": true,
-      "connectionStringSetting": "CosmosDbConnectionString",
+      "connection": "CosmosDbConnectionString",
       "partitionKey": "/userId"
     }
   ]
