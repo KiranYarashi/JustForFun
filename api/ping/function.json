@@ -5,8 +5,8 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "methods": ["post"],
-      "route": "auth/{action}"
+      "methods": ["get", "post"],
+      "route": "ping"
     },
     {
       "type": "http",
@@ -16,21 +16,22 @@
     {
       "type": "cosmosDB",
       "direction": "out",
-      "name": "outputDocument",
+      "name": "usersBootstrap",
       "databaseName": "LeetCodeTracker",
       "containerName": "Users",
       "createIfNotExists": true,
-      "connectionStringSetting": "CosmosDbConnectionString"
+      "connectionStringSetting": "CosmosDbConnectionString",
+      "partitionKey": "/username"
     },
     {
       "type": "cosmosDB",
-      "direction": "in",
-      "name": "userDocument",
+      "direction": "out",
+      "name": "progressBootstrap",
       "databaseName": "LeetCodeTracker",
-      "containerName": "Users",
+      "containerName": "UserProgress",
+      "createIfNotExists": true,
       "connectionStringSetting": "CosmosDbConnectionString",
-      "id": "{username}",
-      "partitionKey": "{username}"
+      "partitionKey": "/userId"
     }
   ]
 }
