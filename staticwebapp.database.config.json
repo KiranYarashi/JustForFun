@@ -1,0 +1,14 @@
+{
+  "dataSource": "DatabaseConnection",
+  "entities": {
+    "UserProgress": {
+      "source": "UserProgress",
+      "permissions": [
+        {
+          "role": "authenticated",
+          "actions": ["create", "read", "update", "delete"]
+        }
+      ]
+    }
+  }
+}

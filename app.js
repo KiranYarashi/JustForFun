@@ -8,23 +8,221 @@ let problemNotes = {}; // Store notes per problemId
 let problemHistory = {}; // Store completion timestamps
 let customSections = []; // Store custom sections/categories
 let currentTab = 'roadmap'; // Current active tab
+let categoryOrder = []; // Store order of category IDs
+let isReorderMode = false; // Toggle for reordering UI
 
 // ===== Initialize App =====
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
+    
+    // Initialize Auth
+    authService.initialize().then(isInitialized => {
+        if (isInitialized) {
+            updateAuthUI();
+            
+            // If already logged in, sync with cloud
+            if (authService.isAuthenticated()) {
+                const userId = authService.getUserId();
+                dataSync.syncWithCloud(userId).then(() => {
+                    // Reload state after sync
+                    loadState();
+                    loadMaangState();
+                    loadCustomProblems();
+                    loadCustomSections();
+                    loadNotes();
+                    loadHistory();
+                    loadCategoryOrder(); // Load order
+                    renderCategories();
+                    renderMaangCategories();
+                    updateAllTrackers();
+                    updateTabCounts();
+                });
+            }
+        }
+    });
+
     loadState();
     loadMaangState();
     loadCustomProblems();
     loadCustomSections();
     loadNotes();
     loadHistory();
+    loadCategoryOrder(); // Load order
     renderCategories();
     renderMaangCategories();
     updateAllTrackers();
     updateTabCounts();
-    initTheme();
     checkCookieConsent();
     checkFirstTimeUser();
+    
+    // Register sync status callback
+    dataSync.setSyncStatusCallback((status, message) => {
+        const statusEl = document.getElementById('sync-status');
+        if (statusEl) {
+            statusEl.textContent = message;
+            if (status === 'error') statusEl.style.color = '#ef4444';
+            else if (status === 'syncing') statusEl.style.color = '#f59e0b';
+            else statusEl.style.color = 'rgba(255, 255, 255, 0.7)';
+        }
+    });
+
+    // Show Splash Screen on load (if not in debug/fast mode)
+    showSplashScreen();
 });
+
+// ===== Splash Screen Logic =====
+function showSplashScreen() {
+    const splash = document.getElementById('splash-screen');
+    const quoteEl = document.getElementById('splash-quote');
+    
+    // Developer Quotes
+    const quotes = [
+        "Compiling... just kidding, it's JavaScript.",
+        "It works on my machine.",
+        "Debugging: Being the detective in a crime where you are the murderer.",
+        "6 hours of debugging can save you 5 minutes of reading documentation.",
+        "To understand recursion, you must first understand recursion.",
+        "Ctrl+C, Ctrl+V... Stack Overflow is my backend.",
+        "Git commit -m 'fixed stuff'",
+        "One more semi-colon...",
+        "Why do Java developers wear glasses? Because they don't C#.",
+        "Code is like humor. When you have to explain it, it's bad.",
+        "I don't always test my code, but when I do, I do it in production.",
+        "Per my last email... (Corporate speak for 'Can you read?')",
+        "It's not a bug, it's an undocumented feature.",
+        "Git push --force... because sometimes violence is the answer.",
+        "Deleting production database in 3... 2... 1...",
+        "Manager: 'Just a small change.' Narrator: 'It was not.'",
+        "Converting caffeine into anxiety and code.",
+        "CSS is awesome! *Table flip*",
+        "My code is garbage, but it runs. DO NOT TOUCH IT.",
+        "How do I exit Vim? Send help.",
+        "Simulating productivity until 5 PM...",
+        "Deploying on Friday? You brave soul.",
+        "Walking into the daily standup like 🧟",
+        "Zero days since last merge conflict.",
+        "Real programmers count from 0.",
+        "Sudo make me a sandwich."
+    ];
+    
+    if (quoteEl) {
+        quoteEl.textContent = quotes[Math.floor(Math.random() * quotes.length)];
+    }
+    
+    // Hide after total time (approx 3-4s)
+    setTimeout(() => {
+        splash.classList.add('hidden');
+        setTimeout(() => {
+            if (splash.parentNode) splash.parentNode.removeChild(splash);
+        }, 600); // Wait for transition
+    }, 3500);
+}
+
+// ===== Auth Functions =====
+// ===== Auth Functions =====
+async function handleLogin() {
+    console.log('Sign In button clicked');
+    try {
+        if (typeof isAzureConfigured === 'undefined') {
+            alert('Error: authConfig.js is not loaded correctly. Please check console.');
+            return;
+        }
+
+        if (!isAzureConfigured()) {
+            alert('Azure AD is not configured yet!\n\nPlease open "authConfig.js" and add your Client ID and Tenant ID to enable sign-in.');
+            return;
+        }
+
+        // Show sarcastic roast modal first
+        if (typeof showRoastModal === 'function') {
+            showRoastModal();
+        } else {
+            console.error('showRoastModal is missing');
+            performLogin(); // Fallback
+        }
+    } catch (e) {
+        alert('An error occurred: ' + e.message);
+        console.error(e);
+    }
+}
+
+// Actual login called after user accepts the roast
+async function performLogin() {
+    closeRoastModal();
+    
+    try {
+        await authService.login();
+        updateAuthUI();
+        
+        // Sync after login
+        const userId = authService.getUserId();
+        if (userId) {
+            const statusEl = document.getElementById('sync-status');
+            if (statusEl) statusEl.textContent = 'Syncing...';
+            
+            await dataSync.syncWithCloud(userId);
+            
+            // Reload everything
+            location.reload(); 
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        alert('Login failed: ' + error.message);
+    }
+}
+
+// ===== Roast Logic =====
+const roasts = [
+    "Looks like someone finally decided to commit code instead of suicide.",
+    "Bravest thing you've done since pushing to main on a Friday.",
+    "Authentication required because we can't trust you with local storage.",
+    "Warning: This action will expose your lack of progress to the cloud.",
+    "Initializing 'Pretend I'm Working' protocol...",
+    "Connecting to database... hope your schema is better than your social life."
+];
+
+function showRoastModal() {
+    const modal = document.getElementById('roast-login-modal');
+    const messageEl = document.getElementById('roast-message');
+    const randomRoast = roasts[Math.floor(Math.random() * roasts.length)];
+    
+    messageEl.textContent = randomRoast;
+    modal.classList.remove('hidden');
+    
+    // Attach event listener to confirm button
+    const confirmBtn = document.getElementById('confirm-login-btn');
+    confirmBtn.onclick = performLogin;
+}
+
+function closeRoastModal() {
+    document.getElementById('roast-login-modal').classList.add('hidden');
+}
+
+async function handleLogout() {
+    try {
+        await authService.logout();
+    } catch (error) {
+        console.error('Logout error:', error);
+    }
+}
+
+function updateAuthUI() {
+    const loginBtn = document.getElementById('login-btn');
+    const userProfile = document.getElementById('user-profile');
+    const userName = document.getElementById('user-name');
+    const userAvatar = document.getElementById('user-avatar');
+    
+    if (authService.isAuthenticated()) {
+        loginBtn.classList.add('hidden');
+        userProfile.classList.remove('hidden');
+        
+        userName.textContent = authService.getDisplayName();
+        userAvatar.textContent = authService.getInitials();
+    } else {
+        loginBtn.classList.remove('hidden');
+        userProfile.classList.add('hidden');
+    }
+}
 
 // ===== State Management =====
 function loadState() {
@@ -40,7 +238,14 @@ function loadState() {
 
 function saveState() {
     try {
+        // Save locally
         localStorage.setItem('leetcode-tracker-completed', JSON.stringify([...completedProblems]));
+        
+        // Save to cloud if authenticated
+        if (authService.isAuthenticated()) {
+            const data = dataSync.collectLocalProgress();
+            dataSync.debouncedSave(authService.getUserId(), data);
+        }
     } catch (e) {
         console.error('Failed to save state:', e);
     }
@@ -61,6 +266,12 @@ function loadCustomProblems() {
 function saveCustomProblems() {
     try {
         localStorage.setItem('leetcode-tracker-custom-problems', JSON.stringify(customProblems));
+        
+        // Save to cloud
+        if (authService.isAuthenticated()) {
+            const data = dataSync.collectLocalProgress();
+            dataSync.debouncedSave(authService.getUserId(), data);
+        }
     } catch (e) {
         console.error('Failed to save custom problems:', e);
     }
@@ -81,6 +292,12 @@ function loadNotes() {
 function saveNotesState() {
     try {
         localStorage.setItem('leetcode-tracker-notes', JSON.stringify(problemNotes));
+        
+        // Save to cloud
+        if (authService.isAuthenticated()) {
+            const data = dataSync.collectLocalProgress();
+            dataSync.debouncedSave(authService.getUserId(), data);
+        }
     } catch (e) {
         console.error('Failed to save notes:', e);
     }
@@ -100,6 +317,12 @@ function loadHistory() {
 function saveHistory() {
     try {
         localStorage.setItem('leetcode-tracker-history', JSON.stringify(problemHistory));
+        
+        // Save to cloud
+        if (authService.isAuthenticated()) {
+            const data = dataSync.collectLocalProgress();
+            dataSync.debouncedSave(authService.getUserId(), data);
+        }
     } catch (e) {
         console.error('Failed to save history:', e);
     }
@@ -119,8 +342,40 @@ function loadCustomSections() {
 function saveCustomSections() {
     try {
         localStorage.setItem('leetcode-tracker-custom-sections', JSON.stringify(customSections));
+        
+        // Save to cloud
+        if (authService.isAuthenticated()) {
+            const data = dataSync.collectLocalProgress();
+            dataSync.debouncedSave(authService.getUserId(), data);
+        }
     } catch (e) {
         console.error('Failed to save custom sections:', e);
+    }
+}
+
+// ===== Category Order Management =====
+function loadCategoryOrder() {
+    try {
+        const saved = localStorage.getItem('leetcode-tracker-order');
+        if (saved) {
+            categoryOrder = JSON.parse(saved);
+        }
+    } catch (e) {
+        console.error('Failed to load category order:', e);
+    }
+}
+
+function saveCategoryOrder() {
+    try {
+        localStorage.setItem('leetcode-tracker-order', JSON.stringify(categoryOrder));
+        
+        // Save to cloud
+        if (authService.isAuthenticated()) {
+            const data = dataSync.collectLocalProgress();
+            dataSync.debouncedSave(authService.getUserId(), data);
+        }
+    } catch (e) {
+        console.error('Failed to save category order:', e);
     }
 }
 
@@ -134,8 +389,24 @@ function getNextSectionId() {
 }
 
 function getAllCategories() {
-    // Combine default categories with custom sections
-    return [...categoriesData, ...customSections];
+    let all = [...categoriesData, ...customSections];
+    
+    // If no custom order exists, create default one
+    if (categoryOrder.length === 0) {
+        return all;
+    }
+    
+    // Sort based on categoryOrder
+    return all.sort((a, b) => {
+        let indexA = categoryOrder.indexOf(a.id);
+        let indexB = categoryOrder.indexOf(b.id);
+        
+        // Handle new items not yet in order list (append to end)
+        if (indexA === -1) indexA = 9999;
+        if (indexB === -1) indexB = 9999;
+        
+        return indexA - indexB;
+    });
 }
 
 function getNextProblemId() {
@@ -292,43 +563,144 @@ function updateCategoryProgress(categoryId) {
 function renderCategories() {
     const grid = document.getElementById('categories-grid');
     const allCategories = getAllCategories();
-    grid.innerHTML = allCategories.map(category => renderCategoryCard(category)).join('');
+    
+    // Add Reorder Toggle Button if not present
+    let reorderBtn = document.getElementById('reorder-toggle-btn');
+    if (!reorderBtn) {
+        const header = document.querySelector('.main-content .header-section'); // Assuming standard header structure or insert before grid
+        // Actually, let's prepend it to the containers parent or grid wrapper
+        // Better: Inject a controls bar before the grid
+        const controls = document.createElement('div');
+        controls.className = 'controls-bar';
+        controls.style.marginBottom = '16px';
+        controls.style.display = 'flex';
+        controls.style.justifyContent = 'flex-end';
+        
+        controls.innerHTML = `
+            <button id="reorder-toggle-btn" class="btn-secondary" onclick="toggleReorderMode()">
+                <span>⇅ Reorder Sections</span>
+            </button>
+        `;
+        
+        grid.parentNode.insertBefore(controls, grid);
+        reorderBtn = document.getElementById('reorder-toggle-btn');
+    }
+    
+    // Update button state
+    reorderBtn.innerHTML = isReorderMode 
+        ? '<span>✓ Done Reordering</span>' 
+        : '<span>⇅ Reorder Sections</span>';
+    reorderBtn.className = isReorderMode ? 'btn-primary' : 'btn-secondary';
+
+    grid.innerHTML = allCategories.map((category, index) => renderCategoryCard(category, index)).join('');
 }
 
-function renderCategoryCard(category) {
+function toggleReorderMode() {
+    isReorderMode = !isReorderMode;
+    renderCategories(); // Re-render to show/hide drag handles
+}
+
+function renderCategoryCard(category, index) {
     const progress = getCategoryProgress(category.id);
     const isExpanded = expandedCategories.has(category.id);
     const isCustomSection = category.isCustom === true;
     
+    // Drag & Drop Attributes
+    const dragAttrs = isReorderMode ? `
+        draggable="true" 
+        ondragstart="handleDragStart(event, '${category.id}')"
+        ondragover="handleDragOver(event)" 
+        ondrop="handleDrop(event, '${category.id}')"
+        style="cursor: move; border: 2px dashed var(--accent-primary);"
+    ` : '';
+
+    const opacityStyle = isReorderMode ? 'opacity: 0.9;' : '';
+    
     return `
-        <div id="category-${category.id}" class="category-card ${isExpanded ? 'expanded' : ''}">
-            <div class="category-header" onclick="toggleCategory('${category.id}')">
+        <div id="category-${category.id}" 
+             class="category-card ${isExpanded ? 'expanded' : ''}" 
+             ${dragAttrs}>
+            
+            <div class="category-header" onclick="${isReorderMode ? '' : `toggleCategory('${category.id}')`}">
                 <div class="category-info">
-                    <div class="category-icon">${category.icon}</div>
+                     ${isReorderMode ? '<div style="font-size: 1.5rem; margin-right:8px; cursor:move;">☰</div>' : `<div class="category-icon">${category.icon}</div>`}
                     <div class="category-details">
                         <h3 class="category-title">
                             ${category.title}
                             ${isCustomSection ? '<span class="section-custom-badge">Custom</span>' : ''}
                         </h3>
+                        ${!isReorderMode ? `
                         <div class="category-progress-container">
                             <div class="category-progress-bar">
                                 <div class="category-progress-fill" style="width: ${progress.percentage}%"></div>
                             </div>
                             <span class="category-progress-text">${progress.completed} / ${progress.total}</span>
                         </div>
+                        ` : '<div style="font-size:0.8rem; color:var(--text-muted)">Drag to reorder</div>'}
                     </div>
                 </div>
-                <button class="add-problem-btn" onclick="event.stopPropagation(); openAddProblemModal('${category.id}')" title="Add Problem">+</button>
-                ${isCustomSection ? `<button class="delete-section-btn" onclick="event.stopPropagation(); deleteSection('${category.id}')" title="Delete Section">🗑️</button>` : ''}
-                <svg class="category-expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
+                
+                ${!isReorderMode ? `
+                    <button class="add-problem-btn" onclick="event.stopPropagation(); openAddProblemModal('${category.id}')" title="Add Problem">+</button>
+                    ${isCustomSection ? `<button class="delete-section-btn" onclick="event.stopPropagation(); deleteSection('${category.id}')" title="Delete Section">🗑️</button>` : ''}
+                    <svg class="category-expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                ` : ''}
             </div>
+            
+            ${!isReorderMode ? `
             <div class="problems-container">
                 ${renderProblemsTable(category)}
             </div>
+            ` : ''}
         </div>
     `;
+}
+
+// ===== Drag & Drop Handlers =====
+let draggedItemId = null;
+
+function handleDragStart(e, id) {
+    draggedItemId = id;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+    e.target.style.opacity = '0.4';
+}
+
+function handleDragOver(e) {
+    if (e.preventDefault) e.preventDefault(); // Necessary to allow dropping
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function handleDrop(e, targetId) {
+    if (e.stopPropagation) e.stopPropagation();
+    
+    const draggedId = draggedItemId;
+    if (draggedId === targetId) return; // Dropped on self
+    
+    // Get current lists
+    let allCats = getAllCategories();
+    let currentOrder = allCats.map(c => c.id);
+    
+    const fromIndex = currentOrder.indexOf(draggedId);
+    const toIndex = currentOrder.indexOf(targetId);
+    
+    if (fromIndex < 0 || toIndex < 0) return;
+    
+    // Move item
+    currentOrder.splice(fromIndex, 1);
+    currentOrder.splice(toIndex, 0, draggedId);
+    
+    // Update state
+    categoryOrder = currentOrder;
+    saveCategoryOrder();
+    
+    // Re-render
+    renderCategories();
+    
+    return false;
 }
 
 function renderProblemsTable(category) {

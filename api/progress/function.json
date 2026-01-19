@@ -1,0 +1,40 @@
+{
+  "bindings": [
+    {
+      "authLevel": "anonymous",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": [
+        "get",
+        "post"
+      ],
+      "route": "progress/{userId?}"
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "res"
+    },
+    {
+      "type": "cosmosDB",
+      "direction": "in",
+      "name": "inputDocument",
+      "databaseName": "LeetCodeTracker",
+      "containerName": "UserProgress",
+      "connection": "CosmosDbConnectionString",
+      "id": "{userId}_progress",
+      "partitionKey": "{userId}"
+    },
+    {
+      "type": "cosmosDB",
+      "direction": "out",
+      "name": "outputDocument",
+      "databaseName": "LeetCodeTracker",
+      "containerName": "UserProgress",
+      "createIfNotExists": true,
+      "connection": "CosmosDbConnectionString",
+      "partitionKey": "/userId"
+    }
+  ]
+}
