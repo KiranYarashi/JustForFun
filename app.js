@@ -233,10 +233,28 @@ async function handleAuthSubmit(event) {
     }
 }
 
+// Sarcastic error messages for auth failures
+const authErrorRoasts = [
+    "Wrong credentials? Shocker. Try remembering your password like you remember Stack Overflow syntax.",
+    "Authentication failed. Maybe try 'password123' like everyone else?",
+    "Invalid credentials. Your typing skills are as good as your debugging skills.",
+    "Denied. Even SQL injection wouldn't help you here.",
+    "Wrong password. Have you tried turning your brain off and on again?",
+    "Access denied. The database doesn't lie, but clearly you do.",
+    "Login failed. Ctrl+Z won't fix your memory problems.",
+    "Nope. That's not it. Maybe check your sticky note under the keyboard?",
+    "Authentication error. Git blame: you.",
+    "Wrong credentials. This isn't a recoverable exception.",
+    "Invalid login. Your password is in another castle.",
+    "Error 401: User is sus."
+];
+
 function showAuthError(msg) {
     const el = document.getElementById('auth-error-msg');
     if (msg) {
-        el.textContent = msg;
+        // Add a sarcastic twist to the error
+        const roast = authErrorRoasts[Math.floor(Math.random() * authErrorRoasts.length)];
+        el.innerHTML = `<strong>${msg}</strong><br><span style="font-size: 0.85em; opacity: 0.8;">${roast}</span>`;
         el.classList.remove('hidden');
     } else {
         el.classList.add('hidden');
