@@ -2127,3 +2127,127 @@ function nextFunQuestion(answer) {
         document.getElementById('fun-intro-modal').classList.add('hidden');
     }
 }
+
+// ===== Tab Switching =====
+function switchTab(tabName) {
+    currentTab = tabName;
+    
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.tab === tabName) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    const targetContent = document.getElementById(`${tabName}-content`);
+    if (targetContent) {
+        targetContent.classList.add('active');
+    }
+    
+    // Fetch leaderboard when switching to that tab
+    if (tabName === 'leaderboard') {
+        fetchLeaderboard();
+    }
+    
+    // Update analytics when switching to that tab
+    if (tabName === 'analytics') {
+        updateAnalytics();
+    }
+}
+
+// ===== Leaderboard =====
+let leaderboardData = [];
+
+async function fetchLeaderboard() {
+    const loadingEl = document.getElementById('leaderboard-loading');
+    const tableEl = document.getElementById('leaderboard-table');
+    const emptyEl = document.getElementById('leaderboard-empty');
+    
+    // Show loading
+    loadingEl.classList.remove('hidden');
+    tableEl.classList.add('hidden');
+    emptyEl.classList.add('hidden');
+    
+    try {
+        const response = await fetch('/api/leaderboard');
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch leaderboard');
+        }
+        
+        const data = await response.json();
+        leaderboardData = data.leaderboard || [];
+        
+        renderLeaderboard();
+    } catch (error) {
+        console.error('Leaderboard error:', error);
+        loadingEl.classList.add('hidden');
+        emptyEl.classList.remove('hidden');
+        emptyEl.querySelector('p').textContent = '❌ Failed to load leaderboard. Please try again.';
+    }
+}
+
+function renderLeaderboard() {
+    const loadingEl = document.getElementById('leaderboard-loading');
+    const tableEl = document.getElementById('leaderboard-table');
+    const emptyEl = document.getElementById('leaderboard-empty');
+    const rowsContainer = document.getElementById('leaderboard-rows');
+    
+    loadingEl.classList.add('hidden');
+    
+    if (leaderboardData.length === 0) {
+        emptyEl.classList.remove('hidden');
+        return;
+    }
+    
+    tableEl.classList.remove('hidden');
+    
+    // Get current user ID
+    const currentUserId = authService.getUserId();
+    
+    // Find max total for progress bar
+    const maxTotal = Math.max(...leaderboardData.map(u => u.totalSolved), 1);
+    
+    // Generate rows
+    rowsContainer.innerHTML = leaderboardData.map(user => {
+        const isCurrentUser = currentUserId && user.userId === currentUserId;
+        const rankDisplay = getRankDisplay(user.rank);
+        const initial = user.userId.charAt(0).toUpperCase();
+        const progressPercent = (user.totalSolved / maxTotal) * 100;
+        
+        return `
+            <div class="leaderboard-row ${isCurrentUser ? 'current-user' : ''}">
+                <span class="rank-col">${rankDisplay}</span>
+                <span class="user-col">
+                    <div class="user-avatar-leaderboard">${initial}</div>
+                    <span class="user-name-leaderboard">
+                        ${user.userId}
+                        ${isCurrentUser ? '<span class="you-badge">YOU</span>' : ''}
+                    </span>
+                </span>
+                <span class="easy-col">${user.easyCount}</span>
+                <span class="medium-col">${user.mediumCount}</span>
+                <span class="hard-col">${user.hardCount}</span>
+                <span class="total-col">
+                    ${user.totalSolved}
+                    <div class="total-bar">
+                        <div class="total-bar-fill" style="width: ${progressPercent}%"></div>
+                    </div>
+                </span>
+            </div>
+        `;
+    }).join('');
+}
+
+function getRankDisplay(rank) {
+    if (rank === 1) return '<span class="rank-badge rank-1">🥇</span>';
+    if (rank === 2) return '<span class="rank-badge rank-2">🥈</span>';
+    if (rank === 3) return '<span class="rank-badge rank-3">🥉</span>';
+    return `#${rank}`;
+}

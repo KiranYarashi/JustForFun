@@ -1,0 +1,26 @@
+{
+  "bindings": [
+    {
+      "authLevel": "anonymous",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": ["get"],
+      "route": "leaderboard"
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "res"
+    },
+    {
+      "type": "cosmosDB",
+      "direction": "in",
+      "name": "allProgress",
+      "databaseName": "LeetCodeTracker",
+      "containerName": "UserProgress",
+      "connection": "CosmosDbConnectionString",
+      "sqlQuery": "SELECT c.userId, c.data, c.lastUpdated FROM c WHERE c.type != 'bootstrap'"
+    }
+  ]
+}
