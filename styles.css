@@ -2758,17 +2758,71 @@ a:hover {
     margin-right: auto;
 }
 
-/* Mobile Responsive */
+/* ===== Mobile Responsive Styles ===== */
 @media (max-width: 768px) {
+    /* Header & Navigation */
+    .header-container {
+        flex-direction: column;
+        gap: 16px;
+        padding: 12px 0;
+    }
+    
+    .header-right {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .logo-text {
+        font-size: 1.2rem;
+    }
+
+    /* Tab Navigation - Horizontal Scroll */
+    .tab-navigation {
+        overflow-x: auto;
+        white-space: nowrap;
+        justify-content: flex-start;
+        padding: 0 16px;
+        -webkit-overflow-scrolling: touch; /* smooth scroll on iOS */
+    }
+    
+    .tab-container {
+        padding-bottom: 5px; /* space for scrollbar if visible */
+    }
+    
+    .tab-btn {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+
+    /* Grids (Category, Review) */
+    .categories-grid, 
+    .review-grid {
+        grid-template-columns: 1fr; /* Single column */
+        gap: 16px;
+    }
+
+    /* Tables (Leaderboard, Problems) */
     .leaderboard-row {
         grid-template-columns: 50px 1fr 60px 60px;
         padding: 12px 15px;
         font-size: 0.85rem;
     }
     
-    .easy-col, .medium-col {
+    /* Hide non-critical columns on mobile */
+    .easy-col, .medium-col, 
+    .problems-table th:nth-child(2), .problems-table td:nth-child(2), /* Difficulty */
+    .problems-table th:nth-child(4), .problems-table td:nth-child(4), /* Score */
+    .problems-table th:nth-child(5), .problems-table td:nth-child(5)  /* Notes */
+    {
         display: none;
     }
+
+    /* Fix table layout for remaining columns */
+    .problems-table th:nth-child(1), .problems-table td:nth-child(1) { width: 60%; } /* Name */
+    .problems-table th:nth-child(3), .problems-table td:nth-child(3) { width: 20%; } /* Link */
+    .problems-table th:nth-child(6), .problems-table td:nth-child(6) { width: 20%; } /* Status */
     
     .rank-badge {
         width: 28px;
@@ -2780,5 +2834,72 @@ a:hover {
         width: 32px;
         height: 32px;
         font-size: 0.85rem;
+    }
+
+    /* Modals */
+    .modal-content {
+        width: 95%;
+        padding: 20px;
+        margin: 10px;
+    }
+    
+    .auth-modal-content {
+        width: 100%;
+        max-width: none;
+        border-radius: 0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    /* Analytics */
+    .stats-overview {
+        grid-template-columns: repeat(2, 1fr); /* 2x2 grid */
+    }
+    
+    .donut-chart-wrapper {
+        width: 200px;
+        height: 200px;
+    }
+
+    /* Splash Screen */
+    .splash-title {
+        font-size: 2rem;
+    }
+    
+    .splash-quote {
+        font-size: 0.9rem;
+        padding: 0 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Very small screens */
+    .tab-label {
+        display: none; /* Hide tab text, show icons only */
+    }
+    
+    .tab-btn {
+        padding: 10px;
+    }
+    
+    .review-header-section h2 {
+        font-size: 1.5rem;
+    }
+    
+    .review-stats-card {
+        padding: 12px;
+        width: 100%;
+        justify-content: space-around;
+        box-sizing: border-box;
+    }
+    
+    .review-stat .stat-value {
+        font-size: 1.5rem;
+    }
+    
+    .review-divider {
+        margin: 0 10px;
     }
 }
