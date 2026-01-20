@@ -16,12 +16,19 @@ module.exports = async function (context, req) {
         timestamp: new Date().toISOString()
     };
 
+    context.bindings.leaderboardBootstrap = {
+        id: "db_init_check",
+        userId: "db_init_check", // PK for Leaderboard
+        type: "bootstrap",
+        timestamp: new Date().toISOString()
+    };
+
     context.res = {
         status: 200,
         body: {
             message: "Pong! Database containers initialized.",
             timestamp: new Date().toISOString(),
-            details: "Attempted to create 'Users' (PK: /username) and 'UserProgress' (PK: /userId)."
+            details: "Attempted to create 'Users' (PK: /username), 'UserProgress' (PK: /userId), and 'Leaderboard' (PK: /userId)."
         }
     };
 };

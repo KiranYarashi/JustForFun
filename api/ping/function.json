@@ -32,6 +32,16 @@
       "createIfNotExists": true,
       "connection": "CosmosDbConnectionString",
       "partitionKey": "/userId"
+    },
+    {
+      "type": "cosmosDB",
+      "direction": "out",
+      "name": "leaderboardBootstrap",
+      "databaseName": "LeetCodeTracker",
+      "containerName": "Leaderboard",
+      "createIfNotExists": true,
+      "connection": "CosmosDbConnectionString",
+      "partitionKey": "/userId"
     }
   ]
 }

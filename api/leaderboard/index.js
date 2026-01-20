@@ -3,39 +3,17 @@ module.exports = async function (context, req) {
     context.log('Leaderboard request received');
 
     try {
-        const allProgress = context.bindings.allProgress || [];
+        const allStats = context.bindings.allProgress || [];
         
-        // Calculate total solved for each user
-        const leaderboard = allProgress.map(userProgress => {
-            let totalSolved = 0;
-            let easyCount = 0;
-            let mediumCount = 0;
-            let hardCount = 0;
-            
-            if (userProgress.data) {
-                // Count completed problems from each category
-                Object.values(userProgress.data).forEach(category => {
-                    if (category && typeof category === 'object') {
-                        Object.values(category).forEach(problem => {
-                            if (problem && problem.completed) {
-                                totalSolved++;
-                                // Count by difficulty if available
-                                if (problem.difficulty === 'Easy') easyCount++;
-                                else if (problem.difficulty === 'Medium') mediumCount++;
-                                else if (problem.difficulty === 'Hard') hardCount++;
-                            }
-                        });
-                    }
-                });
-            }
-            
+        // Data is already pre-calculated in the 'Leaderboard' container
+        const leaderboard = allStats.map(stats => {
             return {
-                userId: userProgress.userId,
-                totalSolved,
-                easyCount,
-                mediumCount,
-                hardCount,
-                lastUpdated: userProgress.lastUpdated
+                userId: stats.userId,
+                totalSolved: stats.totalSolved || 0,
+                easyCount: stats.easyCount || 0,
+                mediumCount: stats.mediumCount || 0,
+                hardCount: stats.hardCount || 0,
+                lastUpdated: stats.lastUpdated
             };
         });
         

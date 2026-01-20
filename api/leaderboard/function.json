@@ -18,9 +18,9 @@
       "direction": "in",
       "name": "allProgress",
       "databaseName": "LeetCodeTracker",
-      "containerName": "UserProgress",
+      "containerName": "Leaderboard",
       "connection": "CosmosDbConnectionString",
-      "sqlQuery": "SELECT c.userId, c.data, c.lastUpdated FROM c WHERE c.type != 'bootstrap'"
+      "sqlQuery": "SELECT * FROM c WHERE c.type = 'stats'"
     }
   ]
 }

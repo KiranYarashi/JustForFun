@@ -67,6 +67,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 else statusEl.style.color = 'rgba(255, 255, 255, 0.7)';
             }
         });
+        
+        // Attach logout listener explicitly
+        const logoutBtn = document.querySelector('.logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                handleLogout();
+            });
+        }
     } catch (error) {
         console.error("Initialization Error:", error);
     } finally {
@@ -418,12 +427,49 @@ function closeRoastModal() {
     document.getElementById('roast-login-modal').classList.add('hidden');
 }
 
-async function handleLogout() {
-    try {
-        await authService.logout();
-    } catch (error) {
-        console.error('Logout error:', error);
+const logoutRoasts = [
+    "Leaving already? Did your coffee run out or did you finally solve a Two Sum?",
+    "Logging out won't delete your technical debt. It'll still be here tomorrow.",
+    "Are you sure? The junior dev might try to refactor your code while you're away.",
+    "Quitting? Is it because the LeetCode Hard was actually hard?",
+    "Confirming logout... Hope your 'meeting' isn't just you crying in the bathroom.",
+    "Leaving the grind? Don't worry, the cloud will remember your shame.",
+    "Wait! If you log out now, who will feed the O(n^2) monsters in your repo?",
+    "Corporate expects you to be a 10x developer. Logging out is a 0.1x move.",
+    "Are you sure? Your standup is in 10 minutes and you have zero commits.",
+    "Logging out? Be honest, you're just going to ChatGPT the solution anyway.",
+    "The system has detected a sudden drop in productivity... Oh, you're just logging out.",
+    "Fine, leave. But your recursion is still infinite.",
+    "Logging out is effectively a 'force quit' on your career goals today.",
+    "Are you really leaving? Your unresolved merge conflicts are getting lonely.",
+    "Abandoning the sprint? I'll let the stakeholders know you're 'pivoting' to sleep."
+];
+
+function handleLogout() {
+    const randomRoast = logoutRoasts[Math.floor(Math.random() * logoutRoasts.length)];
+    if (!confirm(`${randomRoast}\n\n(Logout will stop cloud sync but keep local progress)`)) {
+        return;
     }
+
+    // Use internal async function to handle logout
+    (async () => {
+        try {
+            console.log('Logging out...');
+            await authService.logout();
+            updateAuthUI();
+            
+            // Clear sync status
+            const statusEl = document.getElementById('sync-status');
+            if (statusEl) statusEl.textContent = '';
+            
+            // Reload to reset all states and show local-only view
+            console.log('Logout successful, reloading...');
+            window.location.reload();
+        } catch (error) {
+            console.error('Logout error:', error);
+            alert('Failed to logout cleanly. Please refresh the page.');
+        }
+    })();
 }
 
 function updateAuthUI() {
