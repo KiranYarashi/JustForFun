@@ -2411,7 +2411,7 @@ a:hover {
 
 .leaderboard-row {
     display: grid;
-    grid-template-columns: 80px 1fr 80px 80px 80px 100px;
+    grid-template-columns: 80px 1fr 100px 100px 100px 100px; /* Adjusted fixed widths */
     align-items: center;
     padding: 16px 20px;
     border-bottom: 1px solid var(--border-color);
@@ -2445,6 +2445,16 @@ a:hover {
     font-size: 1.1rem;
     text-align: center;
 }
+
+/* Center numeric columns */
+.easy-col, .medium-col, .hard-col, .total-col {
+    text-align: center;
+}
+
+.easy-col { color: var(--success-color); }
+.medium-col { color: var(--warning-color); }
+.hard-col { color: var(--danger-color); }
+.total-col { font-weight: bold; color: var(--text-primary); }
 
 .rank-badge {
     display: inline-flex;

@@ -2249,7 +2249,7 @@ async function fetchLeaderboard() {
     emptyEl.classList.add('hidden');
     
     try {
-        const response = await fetch('/api/leaderboard');
+        const response = await fetch('/api/leaderboard?forceRefresh=true');
         
         if (!response.ok) {
             throw new Error('Failed to fetch leaderboard');
