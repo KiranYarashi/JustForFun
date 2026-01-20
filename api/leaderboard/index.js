@@ -11,26 +11,80 @@ module.exports = async function (context, req) {
             const allUserProgress = context.bindings.allUserProgress || [];
             const leaderboardUpdates = [];
 
+            // Load shared problem data
+            // Note: In Azure Functions, we might need to adjust the path depending on deployment structure
+            // Using try-catch to handle potential path issues or fallback
+            let problemDataModule;
+            try {
+                // Try relative path from /api/leaderboard to /api/shared
+                problemDataModule = require('../shared/problem-data.js');
+            } catch (e) {
+                context.log.warn('Could not load shared problem data, falling back to basic counting', e);
+            }
+
             // Recalculate stats for every user
             leaderboard = allUserProgress.map(userProgress => {
                 let totalSolved = 0;
                 let easyCount = 0;
                 let mediumCount = 0;
                 let hardCount = 0;
+                let solvedIds = new Set(); // Track unique problem IDs (some IDs might be in both sets if data is old)
 
                 if (userProgress.data) {
-                    Object.values(userProgress.data).forEach(category => {
-                        if (category && typeof category === 'object') {
-                            Object.values(category).forEach(problem => {
-                                if (problem && problem.completed) {
-                                    totalSolved++;
-                                    if (problem.difficulty === 'Easy') easyCount++;
-                                    else if (problem.difficulty === 'Medium') mediumCount++;
-                                    else if (problem.difficulty === 'Hard') hardCount++;
-                                }
-                            });
-                        }
-                    });
+                    const data = userProgress.data;
+
+                    // 1. Process Roadmap Problems
+                    if (data.completed && Array.isArray(data.completed)) {
+                        data.completed.forEach(id => {
+                           if (!solvedIds.has(String(id))) {
+                               solvedIds.add(String(id));
+                               totalSolved++;
+                               
+                               if (problemDataModule) {
+                                   const diff = problemDataModule.getDifficulty(id);
+                                   if (diff === 'Easy') easyCount++;
+                                   else if (diff === 'Medium') mediumCount++;
+                                   else if (diff === 'Hard') hardCount++;
+                               } else {
+                                   // Fallback if module load failed
+                                   mediumCount++; 
+                               }
+                           }
+                        });
+                    }
+
+                    // 2. Process MAANG Problems
+                    if (data.maangCompleted && Array.isArray(data.maangCompleted)) {
+                        data.maangCompleted.forEach(id => {
+                           if (!solvedIds.has(String(id))) {
+                               solvedIds.add(String(id));
+                               totalSolved++;
+                               
+                               if (problemDataModule) {
+                                   const diff = problemDataModule.getDifficulty(id);
+                                   if (diff === 'Easy') easyCount++;
+                                   else if (diff === 'Medium') mediumCount++;
+                                   else if (diff === 'Hard') hardCount++;
+                               } else {
+                                   mediumCount++;
+                               }
+                           }
+                        });
+                    }
+                    
+                    // 3. Process Custom Problems (if any, treat as Medium/unknown or try to read difficulty if stored)
+                    if (data.customProblems && typeof data.customProblems === 'object') {
+                         Object.values(data.customProblems).forEach(p => {
+                             // Custom problems might have IDs or be objects
+                             // We count them, but difficulty might be generic
+                             // Avoid double counting if ID overlaps (unlikely for custom)
+                             totalSolved++;
+                             
+                             if (p.difficulty === 'Easy') easyCount++;
+                             else if (p.difficulty === 'Hard') hardCount++;
+                             else mediumCount++; // Default custom to Medium
+                         });
+                    }
                 }
 
                 const stats = {
