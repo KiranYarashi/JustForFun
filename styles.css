@@ -1929,12 +1929,13 @@ a:hover {
 
 .chart-card h3 {
     border-bottom: 1px solid var(--border-color);
-    padding-bottom: 15px;
+    padding: 0 0 15px 0;
     margin-bottom: 20px;
     font-size: 1.1rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    line-height: 1.2;
 }
 
 /* Donut Chart (SVG) */
@@ -1976,9 +1977,10 @@ a:hover {
 }
 
 .chart-text, .chart-subtext {
-    transform: none !important;
     transform-box: fill-box;
     transform-origin: center;
+    text-anchor: middle;
+    dominant-baseline: central;
 }
 
 .circle-segment:hover {
@@ -1993,17 +1995,15 @@ a:hover {
 .chart-text {
     fill: var(--text-primary);
     font-family: inherit;
-    font-weight: 700;
-    font-size: 0.5rem; 
-    text-anchor: middle;
+    font-weight: 800;
+    font-size: 8px; 
 }
 
 .chart-subtext {
     fill: var(--text-secondary);
     font-family: inherit;
-    font-weight: 400;
-    font-size: 0.2rem;
-    text-anchor: middle;
+    font-weight: 500;
+    font-size: 3px;
 }
 
 .chart-legend {
@@ -2018,19 +2018,26 @@ a:hover {
 .heatmap-container.monthly-view {
     display: flex;
     flex-wrap: wrap; 
-    gap: 20px;
+    gap: 12px;
     padding-bottom: 10px;
     height: auto;
-    flex-direction: row; 
     justify-content: flex-start; 
 }
 
 .month-card {
-    background: var(--bg-tertiary); /* Slight bg for card */
-    padding: 10px;
-    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 12px;
+    border-radius: var(--radius-md);
     border: 1px solid var(--border-color);
-    width: 160px; /* Fixed width for consistency */
+    flex: 1 1 180px;
+    min-width: 160px;
+    max-width: 200px;
+    transition: all 0.2s ease;
+}
+
+.month-card:hover {
+    border-color: var(--accent-primary);
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .month-title {

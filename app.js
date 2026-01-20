@@ -1489,8 +1489,8 @@ function getNextMeme() {
 }
 
 function switchTab(tabId) {
-    const currentTab = document.querySelector('.tab-btn.active').dataset.tab;
-    if (tabId === currentTab) return;
+    if (currentTab === tabId) return;
+    currentTab = tabId;
 
     // Show Meme Overlay
     const meme = getNextMeme();
@@ -1498,29 +1498,45 @@ function switchTab(tabId) {
     const img = document.getElementById('meme-image');
     const txt = document.getElementById('meme-text');
     
-    // Set content
-    img.src = meme.src;
-    txt.textContent = meme.text;
-    
-    // Show
-    overlay.classList.remove('hidden');
-    
-    // Wait 1.5 seconds (Reduced from 3s)
-    setTimeout(() => {
-        overlay.classList.add('hidden');
+    if (overlay && img && txt) {
+        // Set content
+        img.src = meme.src;
+        txt.textContent = meme.text;
         
-        // Actually switch tabs
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    
-        document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
-        document.getElementById(`${tabId}-content`).classList.add('active');
+        // Show
+        overlay.classList.remove('hidden');
         
-        // If switching to Analytics, render charts
-        if (tabId === 'analytics') {
-            renderAnalytics();
-        }
-    }, 1500);
+        // Wait 1.5 seconds
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+            performTabSwitch(tabId);
+        }, 1500);
+    } else {
+        performTabSwitch(tabId);
+    }
+}
+
+function performTabSwitch(tabId) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.tab === tabId) btn.classList.add('active');
+    });
+    
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    const targetContent = document.getElementById(`${tabId}-content`);
+    if (targetContent) targetContent.classList.add('active');
+    
+    // Trigger tab-specific updates
+    if (tabId === 'analytics') {
+        renderAnalytics();
+    } else if (tabId === 'leaderboard') {
+        fetchLeaderboard();
+    }
 }
 
 function updateTabCounts() {
@@ -1766,26 +1782,33 @@ function renderAnalytics() {
     
     const allProblemsMap = new Map(); // id -> problem object
     
-    // Helper to process problems
-    const processProblem = (p) => {
-        allProblemsMap.set(String(p.id), p);
-    };
+    // 1. Process Roadmap Problems (Default + Custom)
+    getAllCategories().forEach(cat => {
+        getAllProblemsForCategory(cat.id).forEach(p => {
+            allProblemsMap.set(String(p.id), p);
+        });
+    });
     
-    getAllCategories().forEach(c => c.problems.forEach(processProblem));
+    // 2. Process MAANG Problems
     if (typeof maangCategoriesData !== 'undefined') {
-        maangCategoriesData.forEach(c => c.problems.forEach(processProblem));
+        maangCategoriesData.forEach(cat => {
+            cat.problems.forEach(p => {
+                allProblemsMap.set(String(p.id), p);
+            });
+        });
     }
     
-    // Count distinct solved problems from both trackers
+    // 3. Count distinct solved problems
     const allSolvedIds = new Set([...completedProblems, ...maangCompletedProblems]);
     
     allSolvedIds.forEach(id => {
         const p = allProblemsMap.get(String(id));
         if (p) {
             totalSolved++;
-            if (p.difficulty === 'Easy') easySolved++;
-            else if (p.difficulty === 'Medium') mediumSolved++;
-            else if (p.difficulty === 'Hard') hardSolved++;
+            const diff = p.difficulty.toLowerCase();
+            if (diff === 'easy') easySolved++;
+            else if (diff === 'medium') mediumSolved++;
+            else if (diff === 'hard') hardSolved++;
         }
     });
 
@@ -2175,37 +2198,7 @@ function nextFunQuestion(answer) {
 }
 
 // ===== Tab Switching =====
-function switchTab(tabName) {
-    currentTab = tabName;
-    
-    // Update tab buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.tab === tabName) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // Update tab content
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
-    
-    const targetContent = document.getElementById(`${tabName}-content`);
-    if (targetContent) {
-        targetContent.classList.add('active');
-    }
-    
-    // Fetch leaderboard when switching to that tab
-    if (tabName === 'leaderboard') {
-        fetchLeaderboard();
-    }
-    
-    // Update analytics when switching to that tab
-    if (tabName === 'analytics') {
-        updateAnalytics();
-    }
-}
+// Duplicate switchTab removed
 
 // ===== Leaderboard =====
 let leaderboardData = [];
