@@ -191,6 +191,12 @@ function showSplashScreen() {
     // Hide after total time (approx 3-4s)
     setTimeout(() => {
         splash.classList.add('hidden');
+        
+        // Reveal initially hidden content
+        document.querySelectorAll('.initial-hide').forEach(el => {
+            el.classList.remove('initial-hide');
+        });
+
         setTimeout(() => {
             if (splash.parentNode) splash.parentNode.removeChild(splash);
         }, 600); // Wait for transition
