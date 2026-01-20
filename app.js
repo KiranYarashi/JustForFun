@@ -69,13 +69,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         // Attach logout listener explicitly
-        const logoutBtn = document.querySelector('.logout-btn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', (e) => {
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.logout-btn')) {
                 e.preventDefault();
                 handleLogout();
-            });
-        }
+            }
+        });
     } catch (error) {
         console.error("Initialization Error:", error);
     } finally {
@@ -464,29 +463,48 @@ const logoutRoasts = [
 
 function handleLogout() {
     const randomRoast = logoutRoasts[Math.floor(Math.random() * logoutRoasts.length)];
-    if (!confirm(`${randomRoast}\n\n(Logout will stop cloud sync but keep local progress)`)) {
-        return;
-    }
-
-    // Use internal async function to handle logout
-    (async () => {
-        try {
-            console.log('Logging out...');
-            await authService.logout();
-            updateAuthUI();
-            
-            // Clear sync status
-            const statusEl = document.getElementById('sync-status');
-            if (statusEl) statusEl.textContent = '';
-            
-            // Reload to reset all states and show local-only view
-            console.log('Logout successful, reloading...');
-            window.location.reload();
-        } catch (error) {
-            console.error('Logout error:', error);
-            alert('Failed to logout cleanly. Please refresh the page.');
+    const modal = document.getElementById('roast-logout-modal');
+    const messageEl = document.getElementById('logout-roast-message');
+    
+    if (modal && messageEl) {
+        messageEl.textContent = randomRoast;
+        modal.classList.remove('hidden');
+        
+        // Attach event listener to confirm button
+        const confirmBtn = document.getElementById('confirm-logout-btn');
+        confirmBtn.onclick = performLogout;
+    } else {
+        // Fallback to confirm if modal missing for some reason
+        if (confirm(`${randomRoast}\n\n(Logout will stop cloud sync but keep local progress)`)) {
+            performLogout();
         }
-    })();
+    }
+}
+
+function closeLogoutRoastModal() {
+    const modal = document.getElementById('roast-logout-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// Actual logout called after user accepts the roast
+async function performLogout() {
+    closeLogoutRoastModal();
+    try {
+        console.log('Logging out...');
+        await authService.logout();
+        updateAuthUI();
+        
+        // Clear sync status
+        const statusEl = document.getElementById('sync-status');
+        if (statusEl) statusEl.textContent = '';
+        
+        // Reload to reset all states and show local-only view
+        console.log('Logout successful, reloading...');
+        window.location.reload();
+    } catch (error) {
+        console.error('Logout error:', error);
+        alert('Failed to logout cleanly. Please refresh the page.');
+    }
 }
 
 function updateAuthUI() {

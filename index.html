@@ -80,7 +80,7 @@
                             <span class="user-name" id="user-name"></span>
                             <span class="sync-status" id="sync-status"></span>
                         </div>
-                        <button class="logout-btn" onclick="handleLogout()" title="Sign out">
+                        <button class="logout-btn" title="Sign out">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                                 <polyline points="16 17 21 12 16 7"></polyline>
@@ -533,6 +533,35 @@
                 <button class="btn-secondary" onclick="closeRoastModal()">I'm scared, go back</button>
                 <button id="confirm-login-btn" class="btn-primary roast-btn">
                     <span>Deploy to Production (Login)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sarcastic Logout Modal -->
+    <div id="roast-logout-modal" class="modal hidden" style="z-index: 9999;">
+        <div class="modal-content roast-content logout-roast-theme">
+            <div class="roast-header">
+                <span class="roast-emoji">🚪</span>
+                <h2>Abandoning the Grind?</h2>
+            </div>
+            
+            <div class="roast-body">
+                <p id="logout-roast-message" class="roast-message">Thinking of leaving already?</p>
+                <div class="roast-reflection">
+                    <p class="reflection-label">By clicking "Confirm Exit", you acknowledge:</p>
+                    <ul class="reflection-list">
+                        <li>Cloud sync will pause (but local progress is safe).</li>
+                        <li>You are essentially giving up on your daily streak.</li>
+                        <li>The algorithms will still be here when you get back.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="roast-actions">
+                <button class="btn-secondary" onclick="closeLogoutRoastModal()">Wait, I'll stay!</button>
+                <button id="confirm-logout-btn" class="btn-primary roast-btn logout-confirm-btn">
+                    <span>Terminate Session (Logout)</span>
                 </button>
             </div>
         </div>
