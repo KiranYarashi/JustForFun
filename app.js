@@ -10,6 +10,7 @@ let customSections = []; // Store custom sections/categories
 let currentTab = 'roadmap'; // Current active tab
 let categoryOrder = []; // Store order of category IDs
 let isReorderMode = false; // Toggle for reordering UI
+let spacedRepetition = {}; // SRS Data: { problemId: { stage: 1, nextReview: ISOString, lastSolved: ISOString } }
 
 // ===== Initialize App =====
 // ===== Initialize App =====
@@ -49,6 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
         loadCustomSections();
         loadNotes();
         loadHistory();
+        loadHistory();
+        loadSRS(); // Load SRS
         loadCategoryOrder(); // Load order
         renderCategories();
         renderMaangCategories();
@@ -576,6 +579,78 @@ function saveCustomProblems() {
     } catch (e) {
         console.error('Failed to save custom problems:', e);
     }
+}
+
+// ===== SRS Management =====
+function loadSRS() {
+    try {
+        const saved = localStorage.getItem('leetcode-tracker-srs');
+        if (saved) {
+            spacedRepetition = JSON.parse(saved);
+        }
+    } catch (e) {
+        console.error('Failed to load SRS:', e);
+    }
+}
+
+function saveSRS() {
+    try {
+        localStorage.setItem('leetcode-tracker-srs', JSON.stringify(spacedRepetition));
+        if (authService.isAuthenticated()) {
+            const data = dataSync.collectLocalProgress();
+            dataSync.debouncedSave(authService.getUserId(), data);
+        }
+    } catch (e) {
+        console.error('Failed to save SRS:', e);
+    }
+}
+
+function scheduleReview(problemId) {
+    const now = new Date();
+    // Default to stage 1 (1 day interval) if new
+    if (!spacedRepetition[problemId]) {
+        const nextReview = new Date(now);
+        nextReview.setDate(now.getDate() + 1);
+        
+        spacedRepetition[problemId] = {
+            stage: 1,
+            lastSolved: now.toISOString(),
+            nextReview: nextReview.toISOString()
+        };
+    } else {
+        // If already exists, just update lastSolved, keep schedule unless explicit reset
+        // Usually we don't reset stage on re-solve unless user asks, but let's update lastSolved
+        spacedRepetition[problemId].lastSolved = now.toISOString();
+    }
+    saveSRS();
+    updateTabCounts();
+}
+
+function handleReview(problemId, quality = 'good') {
+    if (!spacedRepetition[problemId]) return;
+
+    const item = spacedRepetition[problemId];
+    const now = new Date();
+    
+    // Fibonacci-ish intervals: 1, 3, 7, 14, 30, 60
+    const intervals = [1, 3, 7, 14, 30, 60];
+    let nextStage = item.stage + 1;
+    if (nextStage > intervals.length) nextStage = intervals.length; // Max out
+    
+    const daysToAdd = intervals[nextStage - 1] || 1;
+    
+    const nextReviewDate = new Date();
+    nextReviewDate.setDate(now.getDate() + daysToAdd);
+    
+    spacedRepetition[problemId] = {
+        stage: nextStage,
+        lastSolved: now.toISOString(),
+        nextReview: nextReviewDate.toISOString()
+    };
+    
+    saveSRS();
+    renderReviewTab(); // Refresh UI
+    updateTabCounts();
 }
 
 // ===== Custom Sections Management =====
@@ -1113,6 +1188,7 @@ function toggleProblem(problemId, categoryId) {
     
     if (completedProblems.has(problemId)) {
         celebrateProblemComplete();
+        scheduleReview(problemId); // Trigger SRS
     }
 }
 
@@ -1571,6 +1647,8 @@ function performTabSwitch(tabId) {
         renderAnalytics();
     } else if (tabId === 'leaderboard') {
         fetchLeaderboard();
+    } else if (tabId === 'review') {
+        renderReviewTab();
     }
 }
 
@@ -1584,6 +1662,19 @@ function updateTabCounts() {
     const maangTotal = getMaangTotalProblemsCount();
     const maangCompleted = getMaangCompletedProblemsCount();
     document.getElementById('maang-count').textContent = `${maangCompleted}/${maangTotal}`;
+
+    // Review count (Due)
+    const dueCount = getDueReviewsCount();
+    const reviewBadge = document.getElementById('review-count');
+    if (reviewBadge) {
+        reviewBadge.textContent = dueCount;
+        if (dueCount > 0) {
+            reviewBadge.style.display = 'inline-flex';
+            reviewBadge.style.background = '#ef4444'; // Red for urgency
+        } else {
+            reviewBadge.style.display = 'none';
+        }
+    }
 }
 
 function getCompletedProblemsCount() {
@@ -1768,6 +1859,7 @@ function toggleMaangProblem(problemId) {
             problemHistory[problemId] = new Date().toISOString();
         }
         celebrateProblemComplete();
+        scheduleReview(problemId); // Trigger SRS
     }
     
     saveMaangState();
@@ -2324,4 +2416,122 @@ function getRankDisplay(rank) {
     if (rank === 2) return '<span class="rank-badge rank-2">🥈</span>';
     if (rank === 3) return '<span class="rank-badge rank-3">🥉</span>';
     return `#${rank}`;
+}
+
+// ===== SRS Render Logic =====
+
+function getDueReviewsCount() {
+    const now = new Date();
+    let count = 0;
+    Object.values(spacedRepetition).forEach(item => {
+        if (new Date(item.nextReview) <= now) count++;
+    });
+    return count;
+}
+
+function getProblemDetails(problemId) {
+    // Check Roadmap
+    const allCategories = getAllCategories();
+    for (const cat of allCategories) {
+        const p = cat.problems.find(p => String(p.id) === String(problemId));
+        if (p) return { ...p, category: cat.title, type: 'roadmap' };
+    }
+    // Check MAANG
+    if (typeof maangCategoriesData !== 'undefined') {
+        for (const cat of maangCategoriesData) {
+            const p = cat.problems.find(p => String(p.id) === String(problemId));
+            if (p) return { ...p, category: cat.title, type: 'maang' };
+        }
+    }
+    // Check Custom
+    // (Helper: Iterate values of customProblems)
+    for (const catId in customProblems) {
+        const p = customProblems[catId].find(p => String(p.id) === String(problemId));
+        if (p) return { ...p, category: 'Custom', type: 'roadmap' }; // Treat as roadmap for now
+    }
+    return null;
+}
+
+function renderReviewTab() {
+    const container = document.getElementById('review-list');
+    const emptyState = document.getElementById('review-empty');
+    const allDoneState = document.getElementById('review-all-done');
+    const dueCountEl = document.getElementById('due-count');
+    const overdueCountEl = document.getElementById('overdue-count');
+    
+    if (!container) return;
+    
+    const now = new Date();
+    const reviews = [];
+    let overdueCount = 0;
+    
+    // Collect due reviews
+    Object.keys(spacedRepetition).forEach(id => {
+        // Strict consistency check
+        const isCompleted = completedProblems.has(String(id)) || 
+                           completedProblems.has(Number(id)) || 
+                           maangCompletedProblems.has(String(id)) || 
+                           maangCompletedProblems.has(Number(id));
+                           
+        if (!isCompleted) return; 
+
+        const item = spacedRepetition[id];
+        const nextReview = new Date(item.nextReview);
+        
+        if (nextReview <= now) {
+            const details = getProblemDetails(id);
+            if (details) {
+                reviews.push({ ...item, ...details, id });
+                if (nextReview < new Date(now.getTime() - 86400000)) overdueCount++;
+            }
+        }
+    });
+
+    // Update stats
+    if (dueCountEl) dueCountEl.textContent = reviews.length;
+    if (overdueCountEl) overdueCountEl.textContent = overdueCount;
+    
+    // Sort: Overdue (oldest nextReview) first
+    reviews.sort((a, b) => new Date(a.nextReview) - new Date(b.nextReview));
+    
+    container.innerHTML = '';
+    
+    if (reviews.length === 0) {
+        container.classList.add('hidden');
+        const hasAnySRS = Object.keys(spacedRepetition).length > 0;
+        if (hasAnySRS) {
+            allDoneState.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+        } else {
+            emptyState.classList.remove('hidden');
+            allDoneState.classList.add('hidden');
+        }
+    } else {
+        container.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+        allDoneState.classList.add('hidden');
+        
+        container.innerHTML = reviews.map(p => {
+            const isOverdue = new Date(p.nextReview) < new Date(now.getTime() - 86400000);
+            const difficultyClass = `difficulty-${p.difficulty.toLowerCase()}`;
+            
+            return `
+                <div class="review-card ${isOverdue ? 'overdue' : ''}">
+                    <div class="review-card-header">
+                        <span class="review-title">${p.name}</span>
+                        <span class="difficulty-badge ${difficultyClass}">${p.difficulty}</span>
+                    </div>
+                    <div class="review-meta">
+                        <span class="review-interval">Stage ${p.stage}</span>
+                        <span>•</span>
+                        <span>Due: ${new Date(p.nextReview).toLocaleDateString()}</span>
+                    </div>
+                    <div class="review-actions">
+                        <a href="${p.leetcodeUrl}" target="_blank" class="button btn-review-link">Solve</a>
+                        <button class="btn-review-done" onclick="handleReview('${p.id}')">Mark Reviewed</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 }

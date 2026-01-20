@@ -125,7 +125,8 @@ class DataSyncAPI {
             notes: JSON.parse(localStorage.getItem('leetcode-tracker-notes') || '{}'),
             history: JSON.parse(localStorage.getItem('leetcode-tracker-history') || '{}'),
             order: JSON.parse(localStorage.getItem('leetcode-tracker-order') || '[]'),
-            theme: localStorage.getItem('theme') || 'dark'
+            theme: localStorage.getItem('theme') || 'dark',
+            srs: JSON.parse(localStorage.getItem('leetcode-tracker-srs') || '{}') // Add SRS
         };
     }
 
@@ -160,6 +161,9 @@ class DataSyncAPI {
         }
         if (data.theme) {
             localStorage.setItem('theme', data.theme);
+        }
+        if (data.srs) {
+            localStorage.setItem('leetcode-tracker-srs', JSON.stringify(data.srs));
         }
 
         return true;
