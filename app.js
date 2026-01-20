@@ -301,7 +301,18 @@ async function handleAuthSubmit(event) {
             
             await dataSync.syncWithCloud(userId);
             
-            location.reload(); 
+            // Re-load all states and re-render UI instead of reloading page
+            loadState();
+            loadMaangState();
+            loadCustomProblems();
+            loadCustomSections();
+            loadNotes();
+            loadHistory();
+            loadCategoryOrder();
+            renderCategories();
+            renderMaangCategories();
+            updateAllTrackers();
+            updateTabCounts();
         }
 
     } catch (error) {
