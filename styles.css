@@ -2803,15 +2803,29 @@ a:hover {
         gap: 16px;
     }
 
-    /* Tables (Leaderboard, Problems) */
+    /* Tables (Leaderboard) */
     .leaderboard-row {
-        grid-template-columns: 50px 1fr 60px 60px;
-        padding: 12px 15px;
+        grid-template-columns: 40px 1fr 60px; /* Rank, User, Total */
+        padding: 12px 10px;
         font-size: 0.85rem;
+        gap: 8px;
     }
     
-    /* Hide non-critical columns on mobile */
-    .easy-col, .medium-col, 
+    /* Hide detailed columns on mobile */
+    .easy-col, .medium-col, .hard-col,
+    .leaderboard-row.header-row .easy-col,
+    .leaderboard-row.header-row .medium-col,
+    .leaderboard-row.header-row .hard-col {
+        display: none;
+    }
+
+    /* Force Total column to align right/center */
+    .total-col {
+        text-align: right;
+        justify-self: end;
+    }
+
+    /* Problems Table: already handling Hiding */
     .problems-table th:nth-child(2), .problems-table td:nth-child(2), /* Difficulty */
     .problems-table th:nth-child(4), .problems-table td:nth-child(4), /* Score */
     .problems-table th:nth-child(5), .problems-table td:nth-child(5)  /* Notes */
@@ -2855,12 +2869,28 @@ a:hover {
 
     /* Analytics */
     .stats-overview {
-        grid-template-columns: repeat(2, 1fr); /* 2x2 grid */
+        grid-template-columns: 1fr; /* Stack vertically */
     }
     
+    /* Show Charts, Hide/Simplify Text List on Mobile per user request */
+    /* Assuming user wants visual charts mostly. 
+       If we have text stats blocks, we might want to hide them or compact them.
+       For now, just ensuring spacing is good. */
+    
     .donut-chart-wrapper {
-        width: 200px;
-        height: 200px;
+        width: 180px;
+        height: 180px;
+        margin: 0 auto;
+    }
+    
+    .chart-legend {
+        flex-wrap: wrap; /* allow wrapping */
+        gap: 10px;
+        display: none; /* User requested visual only on mobile */
+    }
+    
+    .stats-card-header {
+       text-align: center;
     }
 
     /* Splash Screen */
