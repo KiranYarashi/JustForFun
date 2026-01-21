@@ -2665,188 +2665,284 @@ a:hover {
     font-size: 1.2rem;
 }
 
-/* ===== SRS / Review Tab Styles ===== */
+/* ===== SRS / Review Tab Styles - PREMIUM REDESIGN ===== */
 .review-container {
-    max-width: 900px;
+    max-width: 1000px;
     margin: 0 auto;
-    padding: 0 20px;
+    padding: 30px 20px;
 }
 
 .review-header-section {
     text-align: center;
-    margin-bottom: 40px;
+    margin-bottom: 50px;
 }
 
 .review-header-section h2 {
-    font-size: 2rem;
-    margin-bottom: 8px;
-    background: var(--text-gradient);
+    font-size: 2.2rem;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1, #a78bfa);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    font-weight: 800;
 }
 
 .review-header-section p {
     color: var(--text-secondary);
     font-size: 1.1rem;
-    margin-bottom: 24px;
+    margin-bottom: 28px;
 }
 
+/* Premium Stats Card with Glassmorphism */
 .review-stats-card {
     display: inline-flex;
     align-items: center;
-    background: var(--bg-secondary);
-    padding: 16px 32px;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 24px 48px;
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    gap: 20px;
 }
 
 .review-stat {
     display: flex;
     flex-direction: column;
     align-items: center;
+    padding: 0 20px;
+    position: relative;
+}
+
+/* Icon decorations */
+.review-stat::before {
+    position: absolute;
+    top: -10px;
+    font-size: 24px;
+    opacity: 0.6;
+}
+
+.review-stat:first-child::before {
+    content: '🧠';
+}
+
+.review-stat.overdue::before {
+    content: '⏰';
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.1); opacity: 1; }
 }
 
 .review-divider {
-    width: 1px;
-    height: 40px;
-    background: var(--border-color);
-    margin: 0 32px;
+    width: 2px;
+    height: 50px;
+    background: linear-gradient(180deg, transparent, rgba(139, 92, 246, 0.5), transparent);
+    margin: 0 24px;
+    border-radius: 1px;
 }
 
 .review-stat .stat-value {
-    font-size: 2rem;
+    font-size: 2.5rem;
     font-weight: 800;
-    color: var(--text-primary);
+    color: #a78bfa;
     line-height: 1;
-    margin-bottom: 4px;
+    margin-bottom: 8px;
+    text-shadow: 0 0 20px rgba(167, 139, 250, 0.5);
 }
 
 .review-stat .stat-label {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1.5px;
     font-weight: 600;
 }
 
 .review-stat.overdue .stat-value {
-    color: var(--danger-color);
-    text-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+    color: #f87171;
+    text-shadow: 0 0 25px rgba(248, 113, 113, 0.6);
+    animation: urgentGlow 2s ease-in-out infinite;
 }
 
-/* Review Grid */
+@keyframes urgentGlow {
+    0%, 100% { text-shadow: 0 0 20px rgba(248, 113, 113, 0.4); }
+    50% { text-shadow: 0 0 35px rgba(248, 113, 113, 0.8); }
+}
+
+/* Review Grid - Enhanced Layout */
 .review-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
     margin-bottom: 40px;
 }
 
+/* Premium Review Cards */
 .review-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 20px;
-    transition: all 0.2s ease;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     position: relative;
     overflow: hidden;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    min-height: 180px;
 }
 
-.review-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    border-color: var(--accent-primary);
-}
-
-.review-card.overdue {
-    border-color: var(--danger-color);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
-}
-
-.review-card.overdue::before {
+.review-card::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
-    width: 4px;
-    height: 100%;
-    background: var(--danger-color);
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #8b5cf6, #6366f1, #a78bfa);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.review-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.3),
+        0 0 30px rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.4);
+}
+
+.review-card:hover::before {
+    opacity: 1;
+}
+
+/* Overdue Card Styling - More Urgent */
+.review-card.overdue {
+    border-color: rgba(239, 68, 68, 0.5);
+    box-shadow: 
+        0 8px 32px rgba(239, 68, 68, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.review-card.overdue::before {
+    opacity: 1;
+    background: linear-gradient(90deg, #ef4444, #dc2626, #f87171);
+    height: 4px;
+}
+
+/* Removed ::after OVERDUE badge that was overlapping with difficulty badge */
+
+@keyframes urgentPulse {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
+}
+
+.review-card.overdue:hover {
+    box-shadow: 
+        0 20px 40px rgba(239, 68, 68, 0.2),
+        0 0 30px rgba(239, 68, 68, 0.15);
 }
 
 .review-card-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    padding-top: 8px;
+    gap: 12px;
 }
 
 .review-title {
-    font-weight: 600;
+    font-weight: 700;
     font-size: 1.1rem;
     color: var(--text-primary);
     line-height: 1.4;
-    margin-right: 12px;
+    flex: 1;
+    word-break: break-word;
 }
 
+/* Stage Badge */
 .review-meta {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     font-size: 0.85rem;
     color: var(--text-secondary);
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
 
 .review-interval {
-    background: var(--bg-tertiary);
-    padding: 2px 8px;
-    border-radius: 4px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(99, 102, 241, 0.1));
+    color: #a78bfa;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    border: 1px solid rgba(139, 92, 246, 0.3);
 }
 
+/* Modern Action Buttons */
 .review-actions {
     display: flex;
     gap: 12px;
     margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.review-actions button {
+.review-actions button,
+.review-actions a {
     flex: 1;
-    padding: 8px;
-    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.btn-review-done {
-    background: var(--success-color);
-    color: white;
-    border: none;
-}
-
-.btn-review-done:hover {
-    filter: brightness(1.1);
-}
-
-.btn-review-link {
-    background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-secondary);
+    transition: all 0.3s ease;
     text-decoration: none;
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
+}
+
+/* Primary Action - Mark Reviewed */
+.btn-review-done {
+    background: linear-gradient(135deg, #22c55e, #10b981);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+}
+
+.btn-review-done:hover {
+    background: linear-gradient(135deg, #16a34a, #059669);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+}
+
+/* Secondary Action - Solve */
+.btn-review-link {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    color: #a78bfa;
 }
 
 .btn-review-link:hover {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(99, 102, 241, 0.1));
+    border-color: rgba(139, 92, 246, 0.6);
+    color: #c4b5fd;
+    transform: translateY(-2px);
 }
 
 /* Empty State */
