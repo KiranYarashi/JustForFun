@@ -2387,7 +2387,16 @@ function getRankDisplay(rank) {
 function getDueReviewsCount() {
     const now = new Date();
     let count = 0;
-    Object.values(spacedRepetition).forEach(item => {
+    Object.keys(spacedRepetition).forEach(id => {
+        // Check if problem is still marked as completed (same logic as renderReviewTab)
+        const isCompleted = completedProblems.has(String(id)) || 
+                           completedProblems.has(Number(id)) || 
+                           maangCompletedProblems.has(String(id)) || 
+                           maangCompletedProblems.has(Number(id));
+        
+        if (!isCompleted) return;
+        
+        const item = spacedRepetition[id];
         if (new Date(item.nextReview) <= now) count++;
     });
     return count;
