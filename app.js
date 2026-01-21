@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateAllTrackers();
         updateTabCounts();
         checkCookieConsent();
-        checkFirstTimeUser();
+        // First-time questionnaire removed - website opens directly
         
         // Register sync status callback
         dataSync.setSyncStatusCallback((status, message) => {
@@ -2285,44 +2285,8 @@ function saveNote() {
     showToast('Note saved successfully!');
 }
 
-// ===== Fun Mode: Questionnaire =====
-const funQuestions = [
-    { q: "Are you 18+? (We show naked code here)", a: true },
-    { q: "Are you a Corporate Slave?", a: true },
-    { q: "Do you dream in LeetCode Hard?", a: true },
-    { q: "Is your social life 404 Not Found?", a: true },
-    { q: "Ready to cry?", a: true }
-];
-let funQIndex = 0;
-
-function checkFirstTimeUser() {
-    if (!localStorage.getItem('leetcode-fun-intro-done')) {
-        const modal = document.getElementById('fun-intro-modal');
-        if (modal) {
-            modal.classList.remove('hidden');
-            showFunQuestion();
-            
-            document.getElementById('fun-yes-btn').onclick = () => nextFunQuestion(true);
-            document.getElementById('fun-no-btn').onclick = () => nextFunQuestion(false);
-        }
-    }
-}
-
-function showFunQuestion() {
-    const q = funQuestions[funQIndex];
-    const textEl = document.getElementById('fun-question-text');
-    if (textEl) textEl.textContent = q.q;
-}
-
-function nextFunQuestion(answer) {
-    funQIndex++;
-    if (funQIndex < funQuestions.length) {
-        showFunQuestion();
-    } else {
-        localStorage.setItem('leetcode-fun-intro-done', 'true');
-        document.getElementById('fun-intro-modal').classList.add('hidden');
-    }
-}
+// ===== Fun Mode: Questionnaire (REMOVED) =====
+// First-time questionnaire has been removed - website now opens directly
 
 // ===== Tab Switching =====
 // Duplicate switchTab removed
