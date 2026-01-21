@@ -902,6 +902,9 @@ function updateAllTrackers() {
     updateRoadmapTracker();
     updateMaangTracker();
     updateTabCounts();
+    if (currentTab === 'analytics') {
+        renderAnalytics();
+    }
 }
 
 function updateRoadmapTracker() {
@@ -1900,6 +1903,9 @@ function updateGlobalProgressDisplay() {
 }
 
 // ===== Analytics Rendering =====
+// ===== Analytics Rendering =====
+let solvedTrendChartInstance = null; // Store chart instance
+
 function renderAnalytics() {
     // 1. Calculate Stats
     let totalSolved = 0;
@@ -1907,16 +1913,17 @@ function renderAnalytics() {
     let mediumSolved = 0;
     let hardSolved = 0;
     
+    // Create map of all problems to their difficulty
     const allProblemsMap = new Map(); // id -> problem object
     
-    // 1. Process Roadmap Problems (Default + Custom)
+    // Process Roadmap Problems
     getAllCategories().forEach(cat => {
         getAllProblemsForCategory(cat.id).forEach(p => {
             allProblemsMap.set(String(p.id), p);
         });
     });
     
-    // 2. Process MAANG Problems
+    // Process MAANG Problems
     if (typeof maangCategoriesData !== 'undefined') {
         maangCategoriesData.forEach(cat => {
             cat.problems.forEach(p => {
@@ -1925,9 +1932,8 @@ function renderAnalytics() {
         });
     }
     
-    // 3. Count distinct solved problems
+    // Count difficulties
     const allSolvedIds = new Set([...completedProblems, ...maangCompletedProblems]);
-    
     allSolvedIds.forEach(id => {
         const p = allProblemsMap.get(String(id));
         if (p) {
@@ -1939,91 +1945,209 @@ function renderAnalytics() {
         }
     });
 
-    // Update Cards
+    // Update Basic Stats Cards
     document.getElementById('stats-total').textContent = totalSolved;
     document.getElementById('stats-easy').textContent = easySolved;
     document.getElementById('stats-medium').textContent = mediumSolved;
     document.getElementById('stats-hard').textContent = hardSolved;
 
-    // 2. Render SVG Donut Chart
-    const total = totalSolved || 1; 
+    // 2. Calculate Streaks (Current & Longest)
+    const datesWithSolves = new Set();
     
-    // Update center text
-    const totalTextEl = document.getElementById('chart-total-text');
-    if (totalTextEl) totalTextEl.textContent = totalSolved;
+    // Helper to normalize date to YYYY-MM-DD
+    const normalizeDate = (dateStr) => {
+        if (!dateStr) return null;
+        try {
+            return new Date(dateStr).toISOString().split('T')[0];
+        } catch (e) { return null; }
+    };
     
-    // Calculate segments
-    // Circumference C = 100 (due to radius 15.9155)
+    // Add dates from history
+    Object.values(problemHistory).forEach(iso => {
+        const date = normalizeDate(iso);
+        if (date) datesWithSolves.add(date);
+    });
     
-    const pctEasy = (easySolved / total) * 100;
-    const pctMedium = (mediumSolved / total) * 100;
-    const pctHard = (hardSolved / total) * 100;
+    const sortedDates = [...datesWithSolves].sort();
     
-    const easySegment = document.querySelector('.easy-segment');
-    const mediumSegment = document.querySelector('.medium-segment');
-    const hardSegment = document.querySelector('.hard-segment');
+    let currentStreak = 0;
+    let maxStreak = 0;
     
-    if (easySegment) {
-        easySegment.setAttribute('stroke-dasharray', `${pctEasy}, 100`);
-        easySegment.style.transform = `rotate(-90deg)`;
-        easySegment.setAttribute('data-count', easySolved);
-        easySegment.setAttribute('data-label', 'Easy');
-    }
-    
-    if (mediumSegment) {
-        mediumSegment.setAttribute('stroke-dasharray', `${pctMedium}, 100`);
-        const rot = -90 + (pctEasy / 100 * 360);
-        mediumSegment.style.transform = `rotate(${rot}deg)`;
-        mediumSegment.setAttribute('data-count', mediumSolved);
-        mediumSegment.setAttribute('data-label', 'Medium');
-    }
-    
-    if (hardSegment) {
-        hardSegment.setAttribute('stroke-dasharray', `${pctHard}, 100`);
-        const rot = -90 + ((pctEasy + pctMedium) / 100 * 360);
-        hardSegment.style.transform = `rotate(${rot}deg)`;
-        hardSegment.setAttribute('data-count', hardSolved);
-        hardSegment.setAttribute('data-label', 'Hard');
-    }
-
-    // Add Hover Interactivity (One-time setup check)
-    if (!document.querySelector('.circular-chart').hasAttribute('data-interactive')) {
-        const chart = document.querySelector('.circular-chart');
-        chart.setAttribute('data-interactive', 'true');
+    if (sortedDates.length > 0) {
+        let tempStreak = 1;
         
-        const resetChartText = () => {
-            document.getElementById('chart-total-text').textContent = document.getElementById('stats-total').textContent;
-            document.querySelector('.chart-subtext').textContent = 'Solved';
-            document.getElementById('chart-total-text').style.fill = 'var(--text-primary)';
-        };
-        
-        const updateChartText = (evt) => {
-            const segment = evt.target;
-            if (segment.classList.contains('circle-segment')) {
-                const count = segment.getAttribute('data-count');
-                const label = segment.getAttribute('data-label');
-                document.getElementById('chart-total-text').textContent = count;
-                document.querySelector('.chart-subtext').textContent = label;
-                
-                // Optional: Change color to match segment
-                const color = getComputedStyle(segment).stroke;
-                document.getElementById('chart-total-text').style.fill = color;
+        // Iterate dates to find max streak
+        for (let i = 1; i < sortedDates.length; i++) {
+            const prev = new Date(sortedDates[i-1]);
+            const curr = new Date(sortedDates[i]);
+            const diffTime = Math.abs(curr - prev);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 1) {
+                tempStreak++;
+            } else {
+                if (tempStreak > maxStreak) maxStreak = tempStreak;
+                tempStreak = 1;
             }
-        };
-
-        chart.addEventListener('mouseover', updateChartText);
-        chart.addEventListener('mouseout', resetChartText);
+        }
+        if (tempStreak > maxStreak) maxStreak = tempStreak;
+        
+        // Calculate Current Streak
+        // Check if last solved date is today or yesterday
+        const today = new Date().toISOString().split('T')[0];
+        const yesterdayDate = new Date();
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+        const yesterday = yesterdayDate.toISOString().split('T')[0];
+        
+        const lastSolvedDate = sortedDates[sortedDates.length - 1];
+        
+        if (lastSolvedDate === today) {
+            // Count backwards from today
+            currentStreak = 1;
+            for (let i = sortedDates.length - 2; i >= 0; i--) {
+                const prev = new Date(sortedDates[i]);
+                const curr = new Date(sortedDates[i+1]);
+                const diff = (curr - prev) / (1000 * 60 * 60 * 24); // Should be 1
+                // Approximate check due to DST etc, but dates are normalized strings
+                if (Math.round(diff) === 1) currentStreak++;
+                else break;
+            }
+        } else if (lastSolvedDate === yesterday) {
+            // Count backwards from yesterday
+            currentStreak = 1;
+             for (let i = sortedDates.length - 2; i >= 0; i--) {
+                const prev = new Date(sortedDates[i]);
+                const curr = new Date(sortedDates[i+1]);
+                const diff = (curr - prev) / (1000 * 60 * 60 * 24);
+                if (Math.round(diff) === 1) currentStreak++;
+                else break;
+            }
+        } else {
+            currentStreak = 0;
+        }
     }
     
-    // Update Legend
-    const legend = document.getElementById('difficulty-legend');
-    legend.innerHTML = `
-        <div class="legend-item"><span class="legend-color" style="background: var(--difficulty-easy)"></span>Easy (${easySolved})</div>
-        <div class="legend-item"><span class="legend-color" style="background: var(--difficulty-medium)"></span>Medium (${mediumSolved})</div>
-        <div class="legend-item"><span class="legend-color" style="background: var(--difficulty-hard)"></span>Hard (${hardSolved})</div>
-    `;
+    document.getElementById('stats-current-streak').textContent = currentStreak;
+    document.getElementById('stats-longest-streak').textContent = maxStreak;
 
-    // 3. Render Heatmap (Monthly View)
+    // 3. Render Trend Chart (Time vs Total Solved) using Chart.js
+    const ctx = document.getElementById('solvedTrendChart');
+    if (ctx) {
+        // Prepare Data Points
+        // We need cumulative count over time.
+        // Get all completion timestamps, sort them.
+        const timestamps = [];
+        Object.values(problemHistory).forEach(iso => {
+            if (iso) timestamps.push(new Date(iso).getTime());
+        });
+        timestamps.sort((a, b) => a - b);
+        
+        // Aggregate by day to avoid too many points? 
+        // Or just map every solve. If many solves on same day, Y increases.
+        // Better: Daily aggregated Cumulative Series
+        const dailyCounts = {};
+        timestamps.forEach(ts => {
+            const dateKey = new Date(ts).toISOString().split('T')[0];
+            dailyCounts[dateKey] = (dailyCounts[dateKey] || 0) + 1;
+        });
+        
+        const chartData = [];
+        let cumulative = 0;
+        const sortedDayKeys = Object.keys(dailyCounts).sort();
+        
+        // If no data, start with 0 at today
+        if (sortedDayKeys.length === 0) {
+            const todayKey = new Date().toISOString().split('T')[0];
+            chartData.push({ x: todayKey, y: 0 });
+        } else {
+             // Add an initial point before the first solve? Maybe 0 the day before?
+             // Optional, but looks nicer.
+             const firstDate = new Date(sortedDayKeys[0]);
+             firstDate.setDate(firstDate.getDate() - 1);
+             chartData.push({ x: firstDate.toISOString().split('T')[0], y: 0 });
+             
+             sortedDayKeys.forEach(date => {
+                 cumulative += dailyCounts[date];
+                 chartData.push({ x: date, y: cumulative });
+             });
+             
+             // Extend to today if last solve was in past
+             const lastDateKey = sortedDayKeys[sortedDayKeys.length - 1];
+             const todayKey = new Date().toISOString().split('T')[0];
+             if (lastDateKey < todayKey) {
+                  chartData.push({ x: todayKey, y: cumulative });
+             }
+        }
+
+        // Destroy previous instance
+        if (solvedTrendChartInstance) {
+            solvedTrendChartInstance.destroy();
+        }
+        
+        // Create new Chart
+        solvedTrendChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Total Problems Solved',
+                    data: chartData,
+                    borderColor: '#8b5cf6', // accent-primary
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#8b5cf6',
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.3 // Smooth curves
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day',
+                            tooltipFormat: 'MMM d, yyyy'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: '#94a3b8'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            precision: 0
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: '#1e293b',
+                        titleColor: '#f1f5f9',
+                        bodyColor: '#cbd5e1',
+                        borderColor: '#334155',
+                        borderWidth: 1
+                    }
+                }
+            }
+        });
+    }
+
+    // 4. Render Heatmap (Monthly View)
     renderHeatmap();
 }
 
