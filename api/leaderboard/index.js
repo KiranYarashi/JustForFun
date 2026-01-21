@@ -72,19 +72,11 @@ module.exports = async function (context, req) {
                         });
                     }
                     
-                    // 3. Process Custom Problems (if any, treat as Medium/unknown or try to read difficulty if stored)
-                    if (data.customProblems && typeof data.customProblems === 'object') {
-                         Object.values(data.customProblems).forEach(p => {
-                             // Custom problems might have IDs or be objects
-                             // We count them, but difficulty might be generic
-                             // Avoid double counting if ID overlaps (unlikely for custom)
-                             totalSolved++;
-                             
-                             if (p.difficulty === 'Easy') easyCount++;
-                             else if (p.difficulty === 'Hard') hardCount++;
-                             else mediumCount++; // Default custom to Medium
-                         });
-                    }
+                    // 3. Custom Problems Note:
+                    // Custom problem IDs are already included in data.completed when marked as solved,
+                    // so they're already counted in totalSolved above. We don't process customProblems
+                    // separately to avoid double-counting. The difficulty breakdown for custom problems
+                    // defaults to Medium via the fallback in steps 1-2 when getDifficulty returns null.
                 }
 
                 const stats = {
