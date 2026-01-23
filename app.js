@@ -522,6 +522,16 @@ function updateAuthUI() {
         
         userName.textContent = authService.getDisplayName();
         userAvatar.textContent = authService.getInitials();
+
+        // Show Admin Badge
+        const adminBadge = document.getElementById('admin-badge');
+        if (adminBadge) {
+            if (authService.isAdmin()) {
+                adminBadge.classList.remove('hidden');
+            } else {
+                adminBadge.classList.add('hidden');
+            }
+        }
     } else {
         loginBtn.classList.remove('hidden');
         userProfile.classList.add('hidden');

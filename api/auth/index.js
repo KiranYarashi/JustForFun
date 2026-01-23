@@ -54,13 +54,16 @@ module.exports = async function (context, req) {
     
             // Save to DB
             context.bindings.outputDocument = newUser;
-    
+
+            const isAdmin = username === 'kiranyarashi';
+            
             context.res = {
                 status: 201,
                 body: { 
                     message: "User created successfully",
                     userId: username,
-                    username: username
+                    username: username,
+                    isAdmin: isAdmin
                 }
             };
         } 
@@ -86,6 +89,8 @@ module.exports = async function (context, req) {
                 };
                 return;
             }
+
+            const isAdmin = existingUser.username === 'kiranyarashi';
     
             // Success
             context.res = {
@@ -93,7 +98,8 @@ module.exports = async function (context, req) {
                 body: {
                     message: "Login successful",
                     userId: existingUser.username,
-                    username: existingUser.username
+                    username: existingUser.username,
+                    isAdmin: isAdmin
                 }
             };
         } 

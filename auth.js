@@ -101,7 +101,8 @@ class AuthService {
         this.user = {
             username: data.username,
             userId: data.userId, // In this case, same as username
-            displayName: data.username
+            displayName: data.username,
+            isAdmin: data.isAdmin || false
         };
         localStorage.setItem('leetcode-tracker-user', JSON.stringify(this.user));
         this.notifyAuthStateChange();
@@ -133,6 +134,10 @@ class AuthService {
 
     getDisplayName() {
         return this.user?.displayName || 'User';
+    }
+
+    isAdmin() {
+        return this.user?.isAdmin === true;
     }
 
     getInitials() {
