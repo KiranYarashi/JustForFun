@@ -262,12 +262,17 @@ const sharedPatternsAPI = {
     async getAll() {
         try {
             const response = await fetch(this.baseUrl);
+            if (response.status === 500) {
+                 console.warn('Shared Patterns API Server Error (500). Feature unavailable.');
+                 return [];
+            }
             if (!response.ok) {
-                throw new Error('Failed to fetch shared patterns');
+                throw new Error(`Failed to fetch shared patterns: ${response.status}`);
             }
             return await response.json();
         } catch (error) {
             console.error('Error fetching shared patterns:', error);
+            // Return empty array to avoid breaking the UI
             return [];
         }
     },
