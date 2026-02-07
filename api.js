@@ -123,8 +123,8 @@ class DataSyncAPI {
             patternsCompleted: JSON.parse(localStorage.getItem('leetcode-tracker-patterns-completed') || '[]'),
             customProblems: JSON.parse(localStorage.getItem('leetcode-tracker-custom-problems') || '{}'),
             customSections: JSON.parse(localStorage.getItem('leetcode-tracker-custom-sections') || '[]'),
-            patternsCustomSections: JSON.parse(localStorage.getItem('leetcode-tracker-patterns-custom-sections') || '[]'),
-            patternsCustomSubSections: JSON.parse(localStorage.getItem('leetcode-tracker-patterns-custom-subsections') || '{}'),
+            // CRITICAL FIX: Use the correct key for custom patterns data structure
+            customPatternsData: JSON.parse(localStorage.getItem('leetcode-tracker-custom-patterns') || '{"weeks":[], "customDays":{}}'),
             notes: JSON.parse(localStorage.getItem('leetcode-tracker-notes') || '{}'),
             history: JSON.parse(localStorage.getItem('leetcode-tracker-history') || '{}'),
             order: JSON.parse(localStorage.getItem('leetcode-tracker-order') || '[]'),
@@ -156,11 +156,9 @@ class DataSyncAPI {
         if (data.customSections) {
             localStorage.setItem('leetcode-tracker-custom-sections', JSON.stringify(data.customSections));
         }
-        if (data.patternsCustomSections) {
-            localStorage.setItem('leetcode-tracker-patterns-custom-sections', JSON.stringify(data.patternsCustomSections));
-        }
-        if (data.patternsCustomSubSections) {
-            localStorage.setItem('leetcode-tracker-patterns-custom-subsections', JSON.stringify(data.patternsCustomSubSections));
+        // CRITICAL FIX: Apply customPatternsData from cloud
+        if (data.customPatternsData) {
+            localStorage.setItem('leetcode-tracker-custom-patterns', JSON.stringify(data.customPatternsData));
         }
         if (data.notes) {
             localStorage.setItem('leetcode-tracker-notes', JSON.stringify(data.notes));

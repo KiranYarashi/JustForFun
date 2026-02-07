@@ -322,8 +322,14 @@ async function handleAuthSubmit(event) {
                 const savedPatterns = localStorage.getItem('leetcode-tracker-patterns-completed');
                 if (savedPatterns) patternsCompletedProblems = new Set(JSON.parse(savedPatterns));
                 
+                const savedCustomPatterns = localStorage.getItem('leetcode-tracker-custom-patterns');
+                if (savedCustomPatterns) {
+                    customPatternsData = JSON.parse(savedCustomPatterns);
+                }
+                
                 // Re-load all states and re-render UI instead of reloading page
                 loadState();
+                loadPatternsState(); // Ensure patterns state is loaded
             loadMaangState();
             loadCustomProblems();
             loadCustomSections();
@@ -1088,9 +1094,23 @@ function renderPatternsTab() {
     grid.innerHTML = '';
     
     // Add "New Week" button at the top/controls
-    // We can inject it into the patterns-content similar to roadmap
-    // For now check if button exists in HTML, if not rely on the creation in index.html (I haven't added it yet in HTML specifically unique to patterns?)
-    // The main "Create New Section" button is shared. We need to handle it.
+    // We also add a "Refresh Shared" button
+    const controlsContainer = document.createElement('div');
+    controlsContainer.className = 'patterns-controls';
+    controlsContainer.style.marginBottom = '20px';
+    controlsContainer.style.display = 'flex';
+    controlsContainer.style.gap = '10px';
+    controlsContainer.innerHTML = `
+        <button class="btn-primary" onclick="openAddPatternWeekModal()">+ Add New Topic</button>
+        <button class="btn-secondary" onclick="loadSharedPatternsContent().then(() => showToast('Shared patterns refreshed!'))">🔄 Refresh Shared</button>
+        <div style="flex-grow:1"></div>
+        <div style="font-size:0.85em; color:var(--text-secondary); align-self:center;">
+            Shared content syncs automatically on load.
+        </div>
+    `;
+    grid.appendChild(controlsContainer);
+    
+    // Combine data
     
     // Combine data
     const allPatterns = [...patternsData, ...(customPatternsData.weeks || [])];
@@ -3761,33 +3781,42 @@ async function loadSharedPatternsContent() {
         
         sharedPatternsContent = await sharedPatternsAPI.getAll();
         
+        let dirtyPatternsData = false;
+        let dirtyCustomProblems = false;
+
         // Merge shared content into local custom arrays
         if (sharedPatternsContent && sharedPatternsContent.length > 0) {
             sharedPatternsContent.forEach(item => {
                 if (item.type === 'topic') {
-                    // Add to customPatternsSections if not already there
-                    const exists = customPatternsSections.some(s => s.id === item.id);
+                    // Add to customPatternsData.weeks if not already there
+                    if (!customPatternsData.weeks) customPatternsData.weeks = [];
+                    
+                    const exists = customPatternsData.weeks.some(s => s.id === item.id);
                     if (!exists) {
-                        customPatternsSections.push({
+                        customPatternsData.weeks.push({
                             id: item.id,
                             title: item.title,
-                            icon: item.data.icon || '🎯',
-                            subSections: item.data.subSections || [],
+                            subSections: item.data.subSections || [], // Usually empty for new topic
+                            badge: item.data.badge || '🚀', // Default icon
                             isCustom: true,
                             isShared: true,
                             createdBy: item.createdBy
                         });
+                        dirtyPatternsData = true;
                     }
                 } else if (item.type === 'pattern') {
-                    // Add to customPatternsSubSections
+                    // Add to customPatternsData.customDays
+                    // Logic: key is parentId (Week ID)
                     const parentId = item.parentId;
                     if (parentId) {
-                        if (!customPatternsSubSections[parentId]) {
-                            customPatternsSubSections[parentId] = [];
+                        if (!customPatternsData.customDays) customPatternsData.customDays = {};
+                        if (!customPatternsData.customDays[parentId]) {
+                            customPatternsData.customDays[parentId] = [];
                         }
-                        const exists = customPatternsSubSections[parentId].some(s => s.id === item.id);
+                        
+                        const exists = customPatternsData.customDays[parentId].some(s => s.id === item.id);
                         if (!exists) {
-                            customPatternsSubSections[parentId].push({
+                            customPatternsData.customDays[parentId].push({
                                 id: item.id,
                                 title: item.title,
                                 problems: item.data.problems || [],
@@ -3795,11 +3824,12 @@ async function loadSharedPatternsContent() {
                                 isShared: true,
                                 createdBy: item.createdBy
                             });
+                            dirtyPatternsData = true;
                         }
                     }
                 } else if (item.type === 'problem') {
                     // Add to customProblems
-                    const patternId = item.parentId;
+                    const patternId = item.parentId; // This is day/subsection ID
                     if (patternId) {
                         if (!customProblems[patternId]) {
                             customProblems[patternId] = [];
@@ -3816,11 +3846,20 @@ async function loadSharedPatternsContent() {
                                 isShared: true,
                                 createdBy: item.createdBy
                             });
+                            dirtyCustomProblems = true;
                         }
                     }
                 }
             });
             
+            // Persist changes so they survive reload even if API fails next time
+            if (dirtyPatternsData) {
+                saveCustomPatternsData();
+            }
+            if (dirtyCustomProblems) {
+                saveCustomProblems();
+            }
+
             // Re-render if patterns tab is active
             if (currentTab === 'patterns') {
                 renderPatternsTab();
