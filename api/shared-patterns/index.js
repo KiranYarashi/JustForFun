@@ -94,8 +94,9 @@ module.exports = async function (context, req) {
             const containerRef = getContainer();
             
             // First, find the document to check ownership
-            const documents = context.bindings.inputDocuments || [];
-            const docToDelete = documents.find(d => d.id === id);
+            // We use the SDK to get the item directly to ensure we have the most up-to-date data
+            // Note: In a production app, we'd use a transaction or stored procedure for atomic cascade
+            const { resource: docToDelete } = await containerRef.item(id).read();
             
             if (!docToDelete) {
                 context.res = {
@@ -114,12 +115,35 @@ module.exports = async function (context, req) {
                 return;
             }
             
-            // Delete the document
+            // Cascade Delete: Find all children recursively
+            // This is a simplified version for small datasets. 
+            // In a large dataset, this should be a background job.
+            const deleteChildren = async (parentId) => {
+                const { resources: children } = await containerRef.items
+                    .query({
+                        query: "SELECT * FROM c WHERE c.parentId = @parentId",
+                        parameters: [{ name: "@parentId", value: parentId }]
+                    })
+                    .fetchAll();
+                
+                for (const child of children) {
+                    // Recursive call to delete kids of this child
+                    await deleteChildren(child.id);
+                    // Delete the child itself
+                    // Partition key is required for delete
+                    await containerRef.item(child.id, child.type).delete();
+                }
+            };
+
+            // Run recursive deletion
+            await deleteChildren(id);
+            
+            // Delete the main document
             await containerRef.item(id, docToDelete.type).delete();
             
             context.res = {
                 status: 200,
-                body: { message: "Deleted successfully", id: id }
+                body: { message: "Deleted successfully with all children", id: id }
             };
         } catch (error) {
             context.log.error('Delete error:', error);

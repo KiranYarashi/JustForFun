@@ -3694,6 +3694,11 @@ function deletePatternSubSection(topicId, patternId) {
                 customPatternsSubSections[topicId] = customPatternsSubSections[topicId].filter(p => p.id !== patternId);
             }
             
+            // Delete from shared API
+            if (authService.isAuthenticated() && typeof sharedPatternsAPI !== 'undefined') {
+                sharedPatternsAPI.delete(patternId).catch(err => console.error('Failed to delete pattern from shared API:', err));
+            }
+            
             // Also delete any custom problems for this pattern
             delete customProblems[patternId];
             
@@ -3714,6 +3719,12 @@ function deletePatternProblem(problemId, patternId) {
         () => {
             if (customProblems[patternId]) {
                 customProblems[patternId] = customProblems[patternId].filter(p => p.id.toString() !== problemId.toString());
+                
+                // Delete from shared API
+                if (authService.isAuthenticated() && typeof sharedPatternsAPI !== 'undefined') {
+                    sharedPatternsAPI.delete(problemId).catch(err => console.error('Failed to delete problem from shared API:', err));
+                }
+                
                 saveCustomProblems();
                 renderPatternsTab();
                 updatePatternsProgress();
