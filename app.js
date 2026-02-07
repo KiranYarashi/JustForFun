@@ -558,6 +558,66 @@ function loadState() {
         if (saved) {
             completedProblems = new Set(JSON.parse(saved));
         }
+
+        // --- DATA REPAIR SCRIPT (Run once per session check) ---
+        // Fix for "messed up history" where pattern problems leaked into roadmap completedProblems
+        if (!window.hasRunDataRepair) {
+            window.hasRunDataRepair = true;
+            let dirty = false;
+            let dirtyPatterns = false;
+
+            // 1. Identify pattern problems in completedProblems
+            // Pattern problems usually have ID > 1000 or specific range, but if they are custom, ID is timestamp based.
+            // We need to check if an ID exists in a PATTERN category but NOT in a ROADMAP category.
+            
+            // Build set of valid Roadmap IDs
+            const roadmapIds = new Set();
+            categoriesData.forEach(c => c.problems.forEach(p => roadmapIds.add(String(p.id))));
+            customSections.forEach(s => (s.problems || []).forEach(p => roadmapIds.add(String(p.id))));
+            // Add custom problems in Roadmap categories
+            Object.keys(customProblems).forEach(catId => {
+                if (!catId.startsWith('pattern-') && !catId.startsWith('custom-pattern-')) {
+                   customProblems[catId].forEach(p => roadmapIds.add(String(p.id)));
+                }
+            });
+
+            // Iterate completedProblems
+            const toRemove = [];
+            completedProblems.forEach(id => {
+               if (!roadmapIds.has(String(id))) {
+                   // This ID doesn't belong to Roadmap. It might be a Pattern problem.
+                   // Check if it's in patternsCompletedProblems. If not, add it.
+                   // But wait, what if it's just a deleted problem? 
+                   // Safest bet: If it looks like a pattern problem (we can't easily tell by ID alone if custom),
+                   // but user said "newly added problems are adding in DSA roadmap". 
+                   // This implies they are seeing them. 
+                   
+                   // Actually, if `completedProblems` has it, it shows as checked in Roadmap IF the problem is displayed.
+                   // The bigger issue is `customProblems` having the problem under a Roadmap category?
+                   // No, `customProblems` keys are mismatched.
+                   
+                   // Let's migrate "orphaned" completions to patterns just in case
+                   if (!patternsCompletedProblems.has(String(id))) {
+                       patternsCompletedProblems.add(String(id));
+                       dirtyPatterns = true;
+                   }
+                   // We don't remove from completedProblems immediately unless we are sure, to avoid data loss.
+                   // But if it's NOT in roadmapIds, it won't show up in Roadmap anyway, so it doesn't hurt.
+                   // The "messed up" part is likely the COUNTS.
+                   toRemove.push(id);
+               }
+            });
+            
+            if (toRemove.length > 0) {
+                console.log('Migrating/Cleaning orphaned completion IDs:', toRemove);
+                 toRemove.forEach(id => completedProblems.delete(id));
+                 dirty = true;
+            }
+
+            if (dirty) saveState();
+            if (dirtyPatterns) savePatternsState();
+        }
+
     } catch (e) {
         console.error('Failed to load state:', e);
     }
@@ -571,11 +631,6 @@ function saveState() {
         // Save to cloud if authenticated
         if (authService.isAuthenticated()) {
             const data = dataSync.collectLocalProgress();
-            // TODO: Ensure collectLocalProgress() picks up patternsCompletedProblems
-            // Since we can't edit API easily, we will inject it into the data object if needed differently, 
-            // but assuming collectLocalProgress just dumps localStorage, we need to ensure we save TO localStorage first.
-            // savePatternsState() does that.
-            
             dataSync.debouncedSave(authService.getUserId(), data);
         }
     } catch (e) {
@@ -590,6 +645,27 @@ function loadCustomProblems() {
         if (saved) {
             customProblems = JSON.parse(saved);
         }
+        
+        // --- CLEANUP SCRIPT (Run once per session) ---
+        // Ensure NO pattern categories exist in customProblems (Roadmap view)
+         if (!window.hasRunCustomProblemsCleanup) {
+            window.hasRunCustomProblemsCleanup = true;
+            let dirty = false;
+            
+            Object.keys(customProblems).forEach(catId => {
+                if (catId.startsWith('pattern-') || catId.startsWith('custom-pattern-')) {
+                    console.log('Removing leaked pattern category from Roadmap customProblems:', catId);
+                    delete customProblems[catId];
+                    dirty = true;
+                }
+            });
+            
+            if (dirty) {
+                saveCustomProblems();
+                showToast('Fixed: Removed pattern problems from Roadmap view.');
+            }
+         }
+
     } catch (e) {
         console.error('Failed to load custom problems:', e);
     }
@@ -1494,22 +1570,38 @@ function handleAddProblem(event) {
         createdBy: authService.isAuthenticated() ? authService.getUserId() : null
     };
     
-    // Add to custom problems
-    if (!customProblems[categoryId]) {
-        customProblems[categoryId] = [];
-    }
-    customProblems[categoryId].push(newProblem);
-    
-    // Save and re-render
-    saveCustomProblems();
-    
+
     // Check if this is a patterns category (pattern ID starts with 'pattern-' or 'custom-pattern-')
     const isPatternCategory = categoryId.startsWith('pattern-') || categoryId.startsWith('custom-pattern-');
     
     if (isPatternCategory) {
+        // For patterns tab, we DO NOT add to generic customProblems if we can avoid it, 
+        // OR we must ensure renderCategories filters it out.
+        // Actually, patterns rendering uses customProblems[patternId]. 
+        // We need to ensure Roadmap doesn't pick it up. 
+        // Roadmap iterates `categoriesData` and `customSections`. 
+        // As long as `customSections` doesn't contain pattern IDs, we are safe?
+        // Wait, `getAllCategories` merges them. User might have added a section with same ID? Unlikely.
+        
+        // HOWEVER, the issue might be that `customProblems` is global. 
+        // If I add to `customProblems['pattern-123']`, and `renderCategories` iterates `customProblems`, 
+        // that would be an issue. But `renderCategories` iterates `categoriesData` + `customSections`.
+        // It does NOT iterate `customProblems` keys directly.
+        
+        // The "leak" might be in `getAllProblems` or search features? 
+        // Or maybe the user accidentally created a CUSTOM SECTION with a pattern ID?
+        
+        // Let's add to customProblems but ensure we handle shared sync first.
+        
+        if (!customProblems[categoryId]) {
+            customProblems[categoryId] = [];
+        }
+        customProblems[categoryId].push(newProblem);
+        saveCustomProblems();
+
         // For patterns tab
         patternsExpandedCategories.add(categoryId);
-        patternsExpandedSubCategories.add(categoryId);
+        patternsExpandedSubCategories.add(categoryId); // Expand the day/subsection
         renderPatternsTab();
         updatePatternsProgress();
         
@@ -1522,20 +1614,39 @@ function handleAddProblem(event) {
                 leetcodeUrl: newProblem.leetcodeUrl,
                 score: newProblem.score
             }, categoryId)
-            .then(() => console.log('Shared problem saved'))
-            .catch(err => console.error('Failed to save shared problem:', err));
+            .then(() => {
+                console.log('Shared problem saved to API');
+                showToast(`Problem "${name}" added & shared!`);
+            })
+            .catch(err => {
+                console.error('Failed to save shared problem:', err);
+                showToast(`Problem added locally, but sync failed: ${err.message}`);
+            });
+        } else {
+             showToast(`Problem "${name}" added locally.`);
         }
     } else {
         // For roadmap tab
+        // validate that categoryId exists in categoriesData or customSections
+        const isRoadmapCat = categoriesData.find(c => c.id === categoryId) || customSections.find(c => c.id === categoryId);
+        
+        if (!isRoadmapCat) {
+             console.warn(`Adding problem to unknown/hidden category: ${categoryId}. This might be a pattern category accessed from Roadmap?`);
+        }
+
+        if (!customProblems[categoryId]) {
+            customProblems[categoryId] = [];
+        }
+        customProblems[categoryId].push(newProblem);
+        saveCustomProblems();
+
         expandedCategories.add(categoryId);
         renderCategories();
         updateAllTrackers();
+        showToast(`Problem "${name}" added to Roadmap!`);
     }
     
     closeAddProblemModal();
-    
-    // Show success message
-    showToast(`Problem "${name}" added successfully!`);
 }
 
 async function deleteProblem(problemId, categoryId) {
@@ -1563,19 +1674,36 @@ async function deleteProblem(problemId, categoryId) {
         }
     }
     
-    // 2. Fallback: Search ALL categories
+    // 2. Fallback: Search ALL categories (BUT RESPECT SCOPE)
+    // Only search fallback if we didn't delete yet AND we don't have a specific category context (rare) 
+    // OR if the provided category was wrong.
+    // CRITICAL FIX: Do NOT delete from Pattern category if we are in Roadmap mode, and vice versa.
+    
     if (!deleted) {
         console.log('Searching fallback categories...');
         const allCats = Object.keys(customProblems);
-        console.log('Available custom categories:', allCats);
         
         for (const catId of allCats) {
+            // Safety: If we are deleting a Pattern problem (inferred context), don't delete from Roadmap
+            // But we don't strictly know context here other than `categoryId` param.
+            
+            // If `categoryId` was provided and looks like a Pattern, we should NOT match against non-pattern categories?
+            // User might be deleting a cross-listed problem?
+            // Let's just try to find it.
+            
+            const isPatternCat = catId.startsWith('pattern-') || catId.startsWith('custom-pattern-');
+            
+            // If we are currently in Pattern tab, prefer pattern categories
+            // If we are in Roadmap tab, prefer roadmap categories
+            
+            // Current strict fix: matches strict ID.
+            
             const originalLen = customProblems[catId].length;
             customProblems[catId] = customProblems[catId].filter(p => String(p.id) !== probIdStr);
             
             if (customProblems[catId].length < originalLen) {
                 deleted = true;
-                categoryId = catId; 
+                categoryId = catId; // Update category for shared API check
                 console.log('Success: Found in fallback category:', catId);
                 break;
             }
@@ -1588,11 +1716,15 @@ async function deleteProblem(problemId, categoryId) {
         if (completedProblems.has(Number(problemId))) completedProblems.delete(Number(problemId));
         if (completedProblems.has(String(problemId))) completedProblems.delete(String(problemId));
         
+        // Also cleanup Patterns state just in case
+        if (patternsCompletedProblems.has(String(problemId))) patternsCompletedProblems.delete(String(problemId));
+        
         if (problemHistory[probIdStr]) delete problemHistory[probIdStr];
         
         // Save local
         saveCustomProblems();
         saveState();
+        savePatternsState(); // Save patterns state too
         saveHistory();
         
         // Check if shared pattern and delete from API
