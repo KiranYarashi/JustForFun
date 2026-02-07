@@ -2927,6 +2927,16 @@ function renderPatternsTab() {
     
     grid.innerHTML = '';
     
+    // Show/hide Create New Topic button based on auth status
+    const createTopicBtn = document.getElementById('create-topic-btn');
+    if (createTopicBtn) {
+        if (authService.isAuthenticated()) {
+            createTopicBtn.classList.remove('hidden');
+        } else {
+            createTopicBtn.classList.add('hidden');
+        }
+    }
+    
     // Add Reorder Toggle Button
     let reorderBtn = document.getElementById('patterns-reorder-toggle-btn');
     if (!reorderBtn) {
@@ -3112,6 +3122,7 @@ function renderPatternProblemsContent(pattern, allProblems) {
                     <th>Difficulty</th>
                     <th>LeetCode</th>
                     <th>Score</th>
+                    <th>Notes</th>
                     <th>Status</th>
                 </tr>
             </thead>
@@ -3152,6 +3163,14 @@ function renderPatternProblemRow(problem, patternId) {
             </td>
             <td>
                 <span class="score-badge">${problem.score || '5/10'}</span>
+            </td>
+            <td>
+                <button class="notes-btn ${problemNotes[problem.id] ? 'has-notes' : ''}" onclick="openNotesModal('${problem.id}', '${problem.name.replace(/'/g, "\\'")}')" title="${problemNotes[problem.id] ? 'View/Edit Notes' : 'Add Notes'}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                </button>
             </td>
             <td>
                 <div class="status-cell">
