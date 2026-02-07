@@ -2682,6 +2682,8 @@ function saveNote() {
     // Re-render to update the note icon
     if (currentTab === 'maang') {
         renderMaangCategories();
+    } else if (currentTab === 'patterns') {
+        renderPatternsTab();
     } else {
         renderCategories();
     }
