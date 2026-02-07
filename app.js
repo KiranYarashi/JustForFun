@@ -2391,66 +2391,72 @@ function renderAnalytics() {
         }
         
         // Create new Chart
-        solvedTrendChartInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-                datasets: [{
-                    label: 'Total Problems Solved',
-                    data: chartData,
-                    borderColor: '#8b5cf6', // accent-primary
-                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                    borderWidth: 3,
-                    pointBackgroundColor: '#8b5cf6',
-                    pointRadius: 3,
-                    pointHoverRadius: 6,
-                    fill: true,
-                    tension: 0.3 // Smooth curves
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: {
-                            unit: 'day',
-                            tooltipFormat: 'MMM d, yyyy'
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.05)'
-                        },
-                        ticks: {
-                            color: '#94a3b8'
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.05)'
-                        },
-                        ticks: {
-                            color: '#94a3b8',
-                            precision: 0
-                        }
-                    }
+        try {
+            solvedTrendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Total Problems Solved',
+                        data: chartData,
+                        borderColor: '#8b5cf6', // accent-primary
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#8b5cf6',
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                        fill: true,
+                        tension: 0.3 // Smooth curves
+                    }]
                 },
-                plugins: {
-                    legend: {
-                        display: false
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                tooltipFormat: 'MMM d, yyyy'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#94a3b8'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                precision: 0
+                            }
+                        }
                     },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        backgroundColor: '#1e293b',
-                        titleColor: '#f1f5f9',
-                        bodyColor: '#cbd5e1',
-                        borderColor: '#334155',
-                        borderWidth: 1
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: '#1e293b',
+                            titleColor: '#f1f5f9',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#334155',
+                            borderWidth: 1
+                        }
                     }
                 }
-            }
-        });
+            });
+        } catch (err) {
+            console.error('Failed to render Trend Chart. Check if "chartjs-adapter-date-fns" is loaded.', err);
+            // Add visual error message to container
+            ctx.parentNode.innerHTML += '<div style="color:red; text-align:center; padding:20px;">Chart Error: ' + err.message + '</div>';
+        }
     }
 
     // 4. Render Heatmap (Monthly View)
