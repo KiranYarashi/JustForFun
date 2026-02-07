@@ -583,29 +583,30 @@ function loadState() {
 
             // Iterate completedProblems
             const toRemove = [];
-            completedProblems.forEach(id => {
-               if (!roadmapIds.has(String(id))) {
+            
+            // New Array.from to avoid iterator issues during deletion
+            Array.from(completedProblems).forEach(id => {
+               const strId = String(id);
+               // If ID is NOT in valid Roadmap IDs, it's a leak or a collision.
+               if (!roadmapIds.has(strId)) {
                    // This ID doesn't belong to Roadmap. It might be a Pattern problem.
+                   
                    // Check if it's in patternsCompletedProblems. If not, add it.
-                   // But wait, what if it's just a deleted problem? 
-                   // Safest bet: If it looks like a pattern problem (we can't easily tell by ID alone if custom),
-                   // but user said "newly added problems are adding in DSA roadmap". 
-                   // This implies they are seeing them. 
-                   
-                   // Actually, if `completedProblems` has it, it shows as checked in Roadmap IF the problem is displayed.
-                   // The bigger issue is `customProblems` having the problem under a Roadmap category?
-                   // No, `customProblems` keys are mismatched.
-                   
-                   // Let's migrate "orphaned" completions to patterns just in case
-                   if (!patternsCompletedProblems.has(String(id))) {
-                       patternsCompletedProblems.add(String(id));
+                   if (!patternsCompletedProblems.has(strId)) {
+                       patternsCompletedProblems.add(strId);
                        dirtyPatterns = true;
                    }
-                   // We don't remove from completedProblems immediately unless we are sure, to avoid data loss.
-                   // But if it's NOT in roadmapIds, it won't show up in Roadmap anyway, so it doesn't hurt.
-                   // The "messed up" part is likely the COUNTS.
+                   
+                   // Mark for removal from Roadmap history
                    toRemove.push(id);
-               }
+               } 
+               // COLLISION CHECK: 
+               // If it IS in Roadmap IDs, but the user says history is messed up... 
+               // It might be that they completed a Pattern problem with ID 105, 
+               // and now Roadmap Problem 105 is showing as done.
+               // We can't automatically know which one they meant without more heuristic.
+               // But since we are enforcing unique IDs for NEW problems, this won't happen again.
+               // For now, we trust strict Roadmap IDs.
             });
             
             if (toRemove.length > 0) {
@@ -1426,11 +1427,40 @@ function renderProblemRow(problem, categoryId) {
     const isCustom = problem.isCustom === true;
     const hasNote = problemNotes[problem.id] && problemNotes[problem.id].trim().length > 0;
     
+    // Check ownership for delete button
+    const currentUserId = authService.getUserId();
+    const isCreator = problem.createdBy === currentUserId || (!problem.createdBy && problem.isCustom); // Backwards compat for old local problems
+    
+    // Only show delete button if user is creator
+    const deleteButtonHtml = isCreator ? 
+        `<button class="delete-btn" onclick="deleteProblem('${problem.id}', '${category.id}')" title="Delete Problem">🗑️</button>` : 
+        '';
+
     return `
-        <tr>
-            <td>
-                <a href="${problem.leetcodeUrl}" target="_blank" class="problem-link problem-name">
-                    ${problem.name}
+        <tr class="problem-row ${isCompleted ? 'completed' : ''}" data-id="${problem.id}">
+            <td class="status-col">
+                <input type="checkbox" 
+                    id="p-${problem.id}" 
+                    ${isCompleted ? 'checked' : ''} 
+                    onchange="toggleProblem('${problem.id}', '${category.id}')">
+            </td>
+            <td class="problem-col">
+                <a href="${problem.leetcodeUrl}" target="_blank" class="problem-link">${problem.name}</a>
+                ${isCustom ? '<span class="custom-badge">Custom</span>' : ''}
+            </td>
+            <td class="difficulty-col">
+                <span class="difficulty-badge ${difficultyClass}">${problem.difficulty}</span>
+            </td>
+            <td class="note-col">
+                 <button class="note-btn ${hasNote ? 'has-note' : ''}" onclick="openNoteModal('${problem.id}')" title="${hasNote ? 'Edit Note' : 'Add Note'}">
+                    ${hasNote ? '📝' : '➕'}
+                </button>
+            </td>
+            <td class="actions-col">
+                ${deleteButtonHtml}
+            </td>
+        </tr>
+    `;
                     ${isCustom ? '<span class="custom-badge">Custom</span>' : ''}
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
@@ -1558,21 +1588,36 @@ function handleAddProblem(event) {
         return;
     }
     
-    // Create new problem
+    // Check if this is a patterns category first to decide ID strategy
+    const isPatternCategory = categoryId.startsWith('pattern-') || categoryId.startsWith('custom-pattern-');
+
+    // Create new problem with Context-Aware ID Strategy
+    // CRITICAL FIX: Pattern problems MUST have unique IDs to avoid collision with Roadmap IDs and other users' shared problems.
+    // Roadmap problems use integer IDs (getNextProblemId). 
+    // Patterns should use string IDs (e.g., 'p-' + timestamp) to be safe.
+    
+    let newId;
+    if (isPatternCategory) {
+        // Use timestamp + random suffix for global uniqueness
+        newId = `p-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    } else {
+        // Keep legacy integer IDs for Roadmap
+        newId = getNextProblemId();
+    }
+
     const newProblem = {
-        id: getNextProblemId(),
+        id: newId,
         name: name,
         difficulty: difficulty,
         leetcodeUrl: leetcodeUrl,
         score: score,
         isCustom: true,
         categoryId: categoryId,
-        createdBy: authService.isAuthenticated() ? authService.getUserId() : null
+        createdBy: authService.isAuthenticated() ? authService.getUserId() : null,
+        createdAt: new Date().toISOString()
     };
-    
-
-    // Check if this is a patterns category (pattern ID starts with 'pattern-' or 'custom-pattern-')
-    const isPatternCategory = categoryId.startsWith('pattern-') || categoryId.startsWith('custom-pattern-');
+    // Check if this is a patterns category is already done above
+    // const isPatternCategory = categoryId.startsWith('pattern-') || categoryId.startsWith('custom-pattern-');
     
     if (isPatternCategory) {
         // For patterns tab, we DO NOT add to generic customProblems if we can avoid it, 
@@ -2505,23 +2550,23 @@ function renderAnalytics() {
              chartData.push({ x: firstDate.toISOString().split('T')[0], y: 0 });
              
              sortedDayKeys.forEach(date => {
-                 cumulative += dailyCounts[date];
-                 chartData.push({ x: date, y: cumulative });
-             });
-             
-             // Extend to today if last solve was in past
-             const lastDateKey = sortedDayKeys[sortedDayKeys.length - 1];
-             const todayKey = new Date().toISOString().split('T')[0];
-             if (lastDateKey < todayKey) {
-                  chartData.push({ x: todayKey, y: cumulative });
-             }
+                cumulative += dailyCounts[date];
+                chartData.push({ x: date, y: cumulative });
+            });
         }
-
-        // Destroy previous instance
+        
+        // Destroy existing chart if any
         if (solvedTrendChartInstance) {
             solvedTrendChartInstance.destroy();
         }
         
+        // CHECK IF CHART.JS IS LOADED
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js is not loaded');
+            ctx.parentNode.innerHTML = '<div style="color:red; text-align:center; padding:20px;">Error: Chart.js library not loaded. Check internet connection.</div>';
+            return;
+        }
+
         // Create new Chart
         try {
             solvedTrendChartInstance = new Chart(ctx, {
@@ -2585,9 +2630,13 @@ function renderAnalytics() {
                 }
             });
         } catch (err) {
-            console.error('Failed to render Trend Chart. Check if "chartjs-adapter-date-fns" is loaded.', err);
-            // Add visual error message to container
-            ctx.parentNode.innerHTML += '<div style="color:red; text-align:center; padding:20px;">Chart Error: ' + err.message + '</div>';
+            console.error('Failed to render Trend Chart.', err);
+             // Verify adapter
+             if (err.message.includes('time') || err.message.includes('adapter')) {
+                 ctx.parentNode.innerHTML = '<div style="color:#f59e0b; text-align:center; padding:20px;">Chart Error: Date Adapter missing.<br>Please ensure you have internet access to load CDN scripts.</div>';
+             } else {
+                 ctx.parentNode.innerHTML = '<div style="color:red; text-align:center; padding:20px;">Chart Error: ' + err.message + '</div>';
+             }
         }
     }
 
