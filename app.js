@@ -1433,7 +1433,7 @@ function renderProblemRow(problem, categoryId) {
     
     // Only show delete button if user is creator
     const deleteButtonHtml = isCreator ? 
-        `<button class="delete-btn" onclick="deleteProblem('${problem.id}', '${category.id}')" title="Delete Problem">🗑️</button>` : 
+        `<button class="delete-btn" onclick="deleteProblem('${problem.id}', '${categoryId}')" title="Delete Problem">🗑️</button>` : 
         '';
 
     return `
@@ -1442,7 +1442,7 @@ function renderProblemRow(problem, categoryId) {
                 <input type="checkbox" 
                     id="p-${problem.id}" 
                     ${isCompleted ? 'checked' : ''} 
-                    onchange="toggleProblem('${problem.id}', '${category.id}')">
+                    onchange="toggleProblem('${problem.id}', '${categoryId}')">
             </td>
             <td class="problem-col">
                 <a href="${problem.leetcodeUrl}" target="_blank" class="problem-link">${problem.name}</a>
@@ -1458,27 +1458,6 @@ function renderProblemRow(problem, categoryId) {
             </td>
             <td class="actions-col">
                 ${deleteButtonHtml}
-            </td>
-        </tr>
-    `;
-                <button class="note-btn ${hasNote ? 'has-note' : ''}" onclick="openNoteModal('${problem.id}')" title="${hasNote ? 'Edit Note' : 'Add Note'}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                </button>
-            </td>
-            <td>
-                <div class="status-cell">
-                    <input 
-                        type="checkbox" 
-                        class="status-checkbox" 
-                        ${isCompleted ? 'checked' : ''} 
-                        onchange="toggleProblem(${problem.id}, '${categoryId}')"
-                        aria-label="Mark ${problem.name} as ${isCompleted ? 'incomplete' : 'complete'}"
-                    >
-                    ${isCustom ? `<button class="delete-btn" onclick="event.stopPropagation(); deleteProblem(${problem.id}, '${categoryId}')" title="Delete Problem">🗑️</button>` : ''}
-                </div>
             </td>
         </tr>
     `;
