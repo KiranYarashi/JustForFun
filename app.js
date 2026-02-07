@@ -308,16 +308,22 @@ async function handleAuthSubmit(event) {
         closeAuthModal();
         updateAuthUI();
         
-        // Sync after login
-        const userId = authService.getUserId();
-        if (userId) {
-            const statusEl = document.getElementById('sync-status');
-            if (statusEl) statusEl.textContent = 'Syncing...';
-            
-            await dataSync.syncWithCloud(userId);
-            
-            // Re-load all states and re-render UI instead of reloading page
-            loadState();
+            // Sync after login
+            const userId = authService.getUserId();
+            if (userId) {
+                const statusEl = document.getElementById('sync-status');
+                if (statusEl) statusEl.textContent = 'Syncing...';
+                
+                // FORCE SYNC: Get cloud data and update localStorage appropriately
+                await dataSync.syncWithCloud(userId);
+                
+                // CRITICAL: Re-initialize sets from the potentially updated localStorage
+                // This ensures loadState() sees the cloud data we just downloaded
+                const savedPatterns = localStorage.getItem('leetcode-tracker-patterns-completed');
+                if (savedPatterns) patternsCompletedProblems = new Set(JSON.parse(savedPatterns));
+                
+                // Re-load all states and re-render UI instead of reloading page
+                loadState();
             loadMaangState();
             loadCustomProblems();
             loadCustomSections();
@@ -557,6 +563,18 @@ function loadState() {
         const saved = localStorage.getItem('leetcode-tracker-completed');
         if (saved) {
             completedProblems = new Set(JSON.parse(saved));
+        }
+        
+        // Merge from cloud if available (in case sync happened but loadState wasn't refreshed fully)
+        // This handles cases where UserProgress container has data but UI doesn't show it initially
+        if (typeof dataSync !== 'undefined') {
+             // We don't have direct access to cloudData here without re-fetching, 
+             // but we can trust applyCloudProgress to have updated localStorage.
+             // However, valid patternsCompletedProblems needs to be initialized from storage too!
+             const savedPatterns = localStorage.getItem('leetcode-tracker-patterns-completed');
+             if (savedPatterns) {
+                 patternsCompletedProblems = new Set(JSON.parse(savedPatterns));
+             }
         }
 
         // --- DATA REPAIR SCRIPT (Run once per session check) ---
