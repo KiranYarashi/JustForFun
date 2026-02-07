@@ -253,3 +253,84 @@ class DataSyncAPI {
 
 // Create global data sync instance
 const dataSync = new DataSyncAPI();
+
+// ===== Shared Patterns API =====
+const sharedPatternsAPI = {
+    baseUrl: '/api/shared-patterns',
+    
+    // Get all shared content
+    async getAll() {
+        try {
+            const response = await fetch(this.baseUrl);
+            if (!response.ok) {
+                throw new Error('Failed to fetch shared patterns');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching shared patterns:', error);
+            return [];
+        }
+    },
+    
+    // Add new shared content
+    async add(type, data, parentId = null) {
+        const userId = authService.isAuthenticated() ? authService.getUserId() : null;
+        if (!userId) {
+            throw new Error('Must be logged in to add shared content');
+        }
+        
+        try {
+            const response = await fetch(this.baseUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-id': userId
+                },
+                body: JSON.stringify({
+                    type: type,
+                    parentId: parentId,
+                    createdBy: userId,
+                    data: data,
+                    title: data.title || data.name
+                })
+            });
+            
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || 'Failed to add shared content');
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Error adding shared content:', error);
+            throw error;
+        }
+    },
+    
+    // Delete shared content (only by creator)
+    async delete(id) {
+        const userId = authService.isAuthenticated() ? authService.getUserId() : null;
+        if (!userId) {
+            throw new Error('Must be logged in to delete shared content');
+        }
+        
+        try {
+            const response = await fetch(`${this.baseUrl}/${id}?userId=${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'x-user-id': userId
+                }
+            });
+            
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || 'Failed to delete shared content');
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Error deleting shared content:', error);
+            throw error;
+        }
+    }
+};

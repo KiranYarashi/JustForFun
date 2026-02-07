@@ -1,0 +1,36 @@
+{
+  "bindings": [
+    {
+      "authLevel": "anonymous",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": ["get", "post", "delete"],
+      "route": "shared-patterns/{id?}"
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "res"
+    },
+    {
+      "type": "cosmosDB",
+      "direction": "in",
+      "name": "inputDocuments",
+      "databaseName": "LeetCodeTracker",
+      "containerName": "SharedPatterns",
+      "connection": "CosmosDbConnectionString",
+      "sqlQuery": "SELECT * FROM c ORDER BY c.createdAt DESC"
+    },
+    {
+      "type": "cosmosDB",
+      "direction": "out",
+      "name": "outputDocument",
+      "databaseName": "LeetCodeTracker",
+      "containerName": "SharedPatterns",
+      "createIfNotExists": true,
+      "connection": "CosmosDbConnectionString",
+      "partitionKey": "/type"
+    }
+  ]
+}

@@ -15,6 +15,7 @@ let categoryOrder = []; // Store order of category IDs
 let isReorderMode = false; // Toggle for reordering UI
 let spacedRepetition = {}; // SRS Data: { problemId: { stage: 1, nextReview: ISOString, lastSolved: ISOString } }
 let customPatternsData = { weeks: [], customDays: {} }; // Store custom patterns data
+let sharedPatternsContent = []; // Store globally shared content from API
 
 // ===== Initialize App =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -63,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadHistory();
         loadSRS(); // Load SRS
         loadCategoryOrder(); // Load order
+        loadSharedPatternsContent(); // Load globally shared patterns from API
         renderCategories();
         renderMaangCategories();
         renderPatternsTab(); // Render Patterns Init
@@ -1488,7 +1490,8 @@ function handleAddProblem(event) {
         leetcodeUrl: leetcodeUrl,
         score: score,
         isCustom: true,
-        categoryId: categoryId // Store category ID in problem for easier deletion
+        categoryId: categoryId,
+        createdBy: authService.isAuthenticated() ? authService.getUserId() : null
     };
     
     // Add to custom problems
@@ -1618,7 +1621,8 @@ function handleAddSection(event) {
             title: title,
             icon: icon,
             subSections: [],
-            isCustom: true
+            isCustom: true,
+            createdBy: authService.isAuthenticated() ? authService.getUserId() : null
         };
         
         customPatternsSections.push(newTopic);
@@ -1628,6 +1632,13 @@ function handleAddSection(event) {
         renderPatternsTab();
         updatePatternsProgress();
         closeAddSectionModal();
+        
+        // Save to shared API for global visibility
+        if (authService.isAuthenticated() && typeof sharedPatternsAPI !== 'undefined') {
+            sharedPatternsAPI.add('topic', { id: newTopic.id, title: title, icon: icon, subSections: [] })
+                .then(() => console.log('Shared topic saved'))
+                .catch(err => console.error('Failed to save to shared API:', err));
+        }
         
         showToast(`Topic "${title}" created successfully!`);
         return;
@@ -3009,8 +3020,8 @@ function renderPatternsTab() {
                 </div>
             </div>
             ${!patternsReorderMode ? `
-                <button class="add-problem-btn" onclick="event.stopPropagation(); openAddPatternSubSectionModal('${topic.id}')" title="Add Pattern">+</button>
-                ${topic.isCustom ? `<button class="delete-section-btn" onclick="event.stopPropagation(); deletePatternSection('${topic.id}')" title="Delete Section">🗑️</button>` : ''}
+                ${authService.isAuthenticated() ? `<button class="add-problem-btn" onclick="event.stopPropagation(); openAddPatternSubSectionModal('${topic.id}')" title="Add Pattern">+</button>` : ''}
+                ${topic.isCustom && authService.isAuthenticated() && topic.createdBy === authService.getUserId() ? `<button class="delete-section-btn" onclick="event.stopPropagation(); deletePatternSection('${topic.id}')" title="Delete Section">🗑️</button>` : ''}
                 <svg class="category-expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
@@ -3073,8 +3084,8 @@ function renderPatternSubSection(topicId, pattern) {
                 </div>
             </div>
             <div class="pattern-actions">
-                <button class="add-problem-btn" onclick="event.stopPropagation(); openAddProblemModal('${pattern.id}')" title="Add Problem">+</button>
-                ${pattern.isCustom ? `<button class="delete-section-btn" onclick="event.stopPropagation(); deletePatternSubSection('${topicId}', '${pattern.id}')" title="Delete Pattern">🗑️</button>` : ''}
+                ${authService.isAuthenticated() ? `<button class="add-problem-btn" onclick="event.stopPropagation(); openAddProblemModal('${pattern.id}')" title="Add Problem">+</button>` : ''}
+                ${pattern.isCustom && authService.isAuthenticated() && pattern.createdBy === authService.getUserId() ? `<button class="delete-section-btn" onclick="event.stopPropagation(); deletePatternSubSection('${topicId}', '${pattern.id}')" title="Delete Pattern">🗑️</button>` : ''}
                 <svg class="pattern-expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
@@ -3151,7 +3162,7 @@ function renderPatternProblemRow(problem, patternId) {
                         onchange="togglePatternProblem('${problem.id}', '${patternId}', this)"
                         aria-label="Mark ${problem.name} as ${isCompleted ? 'incomplete' : 'complete'}"
                     >
-                    ${isCustom ? `<button class="delete-btn" onclick="event.stopPropagation(); deletePatternProblem('${problem.id}', '${patternId}')" title="Delete Problem">🗑️</button>` : ''}
+                    ${isCustom && authService.isAuthenticated() && problem.createdBy === authService.getUserId() ? `<button class="delete-btn" onclick="event.stopPropagation(); deletePatternProblem('${problem.id}', '${patternId}')" title="Delete Problem">🗑️</button>` : ''}
                 </div>
             </td>
         </tr>
@@ -3335,7 +3346,8 @@ function handleAddSubSection(event) {
         id: `custom-pattern-${Date.now()}`,
         title: title,
         problems: [],
-        isCustom: true
+        isCustom: true,
+        createdBy: authService.isAuthenticated() ? authService.getUserId() : null
     };
     
     if (!customPatternsSubSections[parentId]) {
@@ -3396,6 +3408,11 @@ function deletePatternSection(topicId) {
         () => {
             customPatternsSections = customPatternsSections.filter(s => s.id !== topicId);
             delete customPatternsSubSections[topicId];
+            
+            // Delete from shared API
+            if (authService.isAuthenticated() && typeof sharedPatternsAPI !== 'undefined') {
+                sharedPatternsAPI.delete(topicId).catch(err => console.error('Failed to delete from shared API:', err));
+            }
             
             savePatternsCRUD();
             renderPatternsTab();
@@ -3520,6 +3537,86 @@ function loadPatternsTopicOrder() {
         }
     } catch (e) {
         console.error('Failed to load patterns order:', e);
+    }
+}
+
+// Load globally shared patterns from API
+async function loadSharedPatternsContent() {
+    try {
+        if (typeof sharedPatternsAPI === 'undefined') {
+            console.warn('sharedPatternsAPI not available');
+            return;
+        }
+        
+        sharedPatternsContent = await sharedPatternsAPI.getAll();
+        
+        // Merge shared content into local custom arrays
+        if (sharedPatternsContent && sharedPatternsContent.length > 0) {
+            sharedPatternsContent.forEach(item => {
+                if (item.type === 'topic') {
+                    // Add to customPatternsSections if not already there
+                    const exists = customPatternsSections.some(s => s.id === item.id);
+                    if (!exists) {
+                        customPatternsSections.push({
+                            id: item.id,
+                            title: item.title,
+                            icon: item.data.icon || '🎯',
+                            subSections: item.data.subSections || [],
+                            isCustom: true,
+                            isShared: true,
+                            createdBy: item.createdBy
+                        });
+                    }
+                } else if (item.type === 'pattern') {
+                    // Add to customPatternsSubSections
+                    const parentId = item.parentId;
+                    if (parentId) {
+                        if (!customPatternsSubSections[parentId]) {
+                            customPatternsSubSections[parentId] = [];
+                        }
+                        const exists = customPatternsSubSections[parentId].some(s => s.id === item.id);
+                        if (!exists) {
+                            customPatternsSubSections[parentId].push({
+                                id: item.id,
+                                title: item.title,
+                                problems: item.data.problems || [],
+                                isCustom: true,
+                                isShared: true,
+                                createdBy: item.createdBy
+                            });
+                        }
+                    }
+                } else if (item.type === 'problem') {
+                    // Add to customProblems
+                    const patternId = item.parentId;
+                    if (patternId) {
+                        if (!customProblems[patternId]) {
+                            customProblems[patternId] = [];
+                        }
+                        const exists = customProblems[patternId].some(p => p.id === item.id);
+                        if (!exists) {
+                            customProblems[patternId].push({
+                                id: item.id,
+                                name: item.title,
+                                difficulty: item.data.difficulty || 'Medium',
+                                leetcodeUrl: item.data.leetcodeUrl || '#',
+                                score: item.data.score || '5/10',
+                                isCustom: true,
+                                isShared: true,
+                                createdBy: item.createdBy
+                            });
+                        }
+                    }
+                }
+            });
+            
+            // Re-render if patterns tab is active
+            if (currentTab === 'patterns') {
+                renderPatternsTab();
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load shared patterns:', error);
     }
 }
 

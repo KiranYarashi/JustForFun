@@ -9,6 +9,8 @@
       "start": "func start",
       "test": "echo \"No tests yet...\""
     },
-    "dependencies": {},
+    "dependencies": {
+        "@azure/cosmos": "^4.0.0"
+    },
     "devDependencies": {}
   }
