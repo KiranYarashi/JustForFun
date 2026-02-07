@@ -2467,8 +2467,11 @@ function renderAnalytics() {
         }
     }
     
-    document.getElementById('stats-current-streak').textContent = currentStreak;
-    document.getElementById('stats-longest-streak').textContent = maxStreak;
+    const currentStreakEl = document.getElementById('stats-current-streak');
+    if (currentStreakEl) currentStreakEl.textContent = currentStreak;
+    
+    const maxStreakEl = document.getElementById('stats-longest-streak');
+    if (maxStreakEl) maxStreakEl.textContent = maxStreak;
 
     // 3. Render Trend Chart (Time vs Total Solved) using Chart.js
     const ctx = document.getElementById('solvedTrendChart');
