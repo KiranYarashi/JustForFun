@@ -1,8 +1,11 @@
 // ===== App State =====
 let completedProblems = new Set();
 let maangCompletedProblems = new Set(); // Separate state for MAANG
+let patternsCompletedProblems = new Set(); // Separate state for Patterns
 let expandedCategories = new Set();
 let maangExpandedCategories = new Set(); // Separate for MAANG
+let patternsExpandedCategories = new Set(); // Separate for Patterns
+let patternsExpandedSubCategories = new Set(); // Separate for Sub-categories
 let customProblems = {}; // Store custom problems per category
 let problemNotes = {}; // Store notes per problemId
 let problemHistory = {}; // Store completion timestamps
@@ -11,12 +14,13 @@ let currentTab = 'roadmap'; // Current active tab
 let categoryOrder = []; // Store order of category IDs
 let isReorderMode = false; // Toggle for reordering UI
 let spacedRepetition = {}; // SRS Data: { problemId: { stage: 1, nextReview: ISOString, lastSolved: ISOString } }
+let customPatternsData = { weeks: [], customDays: {} }; // Store custom patterns data
 
-// ===== Initialize App =====
 // ===== Initialize App =====
 document.addEventListener('DOMContentLoaded', () => {
     try {
         initTheme();
+
         
         // Initialize Auth
         authService.initialize().then(isInitialized => {
@@ -30,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Reload state after sync
                         loadState();
                         loadMaangState();
+                        loadPatternsState(); // Load Patterns
                         loadCustomProblems();
                         loadCustomSections();
                         loadNotes();
@@ -37,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         loadCategoryOrder(); // Load order
                         renderCategories();
                         renderMaangCategories();
+                        renderPatternsTab(); // Render Patterns
                         updateAllTrackers();
                         updateTabCounts();
                     });
@@ -46,6 +52,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         loadState();
         loadMaangState();
+        loadMaangState();
+        loadPatternsState(); // Load Patterns Init
+        loadPatternsTopicOrder(); // Load Patterns order
+        loadCustomPatternsData(); // Return custom data
         loadCustomProblems();
         loadCustomSections();
         loadNotes();
@@ -55,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadCategoryOrder(); // Load order
         renderCategories();
         renderMaangCategories();
+        renderPatternsTab(); // Render Patterns Init
         updateAllTrackers();
         updateTabCounts();
         checkCookieConsent();
@@ -558,6 +569,11 @@ function saveState() {
         // Save to cloud if authenticated
         if (authService.isAuthenticated()) {
             const data = dataSync.collectLocalProgress();
+            // TODO: Ensure collectLocalProgress() picks up patternsCompletedProblems
+            // Since we can't edit API easily, we will inject it into the data object if needed differently, 
+            // but assuming collectLocalProgress just dumps localStorage, we need to ensure we save TO localStorage first.
+            // savePatternsState() does that.
+            
             dataSync.debouncedSave(authService.getUserId(), data);
         }
     } catch (e) {
@@ -907,10 +923,222 @@ function getGlobalProgress() {
     };
 }
 
+// ===== Patterns CRUD =====
+function openAddPatternWeekModal() {
+    // Reuse Add Section Modal but set a flag or handle differently
+    // For now, let's just use the existing openAddSectionModal but modify its submit handler context
+    // Actually, simpler to just have a distinct flow or check active tab
+    // We'll trust openAddSectionModal to handle it based on currentTab?
+    // Let's modify handleAddSection to check currentTab.
+    openAddSectionModal();
+}
+
+function openAddSubSectionModal(weekId) {
+    document.getElementById('add-sub-section-modal').classList.remove('hidden');
+    document.getElementById('parent-section-id').value = weekId;
+    document.getElementById('sub-section-title').value = '';
+}
+
+function closeAddSubSectionModal() {
+    document.getElementById('add-sub-section-modal').classList.add('hidden');
+}
+
+function handleAddSubSection(event) {
+    event.preventDefault();
+    const parentId = document.getElementById('parent-section-id').value;
+    const title = document.getElementById('sub-section-title').value.trim();
+    
+    if (!title) return;
+    
+    const newDay = {
+        id: `custom-day-${Date.now()}`,
+        title: title,
+        problems: [],
+        isCustom: true
+    };
+    
+    if (!customPatternsData.customDays) customPatternsData.customDays = {};
+    if (!customPatternsData.customDays[parentId]) customPatternsData.customDays[parentId] = [];
+    
+    customPatternsData.customDays[parentId].push(newDay);
+    saveCustomPatternsData();
+    renderPatternsTab();
+    closeAddSubSectionModal();
+}
+
+function saveCustomPatternsData() {
+    localStorage.setItem('leetcode-tracker-custom-patterns', JSON.stringify(customPatternsData));
+     if (authService.isAuthenticated()) {
+        const data = dataSync.collectLocalProgress();
+        dataSync.debouncedSave(authService.getUserId(), data);
+    }
+}
+
+function loadCustomPatternsData() {
+    const saved = localStorage.getItem('leetcode-tracker-custom-patterns');
+    if (saved) {
+        customPatternsData = JSON.parse(saved);
+    } else {
+        customPatternsData = { weeks: [], customDays: {} };
+    }
+}
+
+// Modify renderPatternsTab to include custom data and buttons
+function renderPatternsTab() {
+    const grid = document.getElementById('patterns-categories-grid');
+    if (!grid) return;
+    
+    grid.innerHTML = '';
+    
+    // Add "New Week" button at the top/controls
+    // We can inject it into the patterns-content similar to roadmap
+    // For now check if button exists in HTML, if not rely on the creation in index.html (I haven't added it yet in HTML specifically unique to patterns?)
+    // The main "Create New Section" button is shared. We need to handle it.
+    
+    // Combine data
+    const allPatterns = [...patternsData, ...(customPatternsData.weeks || [])];
+
+    allPatterns.forEach(week => {
+        const isExpanded = patternsExpandedCategories.has(week.id);
+        
+        // Merge custom days
+        const customDays = (customPatternsData.customDays && customPatternsData.customDays[week.id]) || [];
+        const allSubSections = [...week.subSections, ...customDays];
+        
+        const completedCount = getWeekCompletedCount({ ...week, subSections: allSubSections });
+        const totalCount = getWeekTotalCount({ ...week, subSections: allSubSections });
+        const progressPercent = totalCount === 0 ? 0 : (completedCount / totalCount) * 100;
+        
+        const card = document.createElement('div');
+        card.className = `category-card ${isExpanded ? 'expanded' : ''}`;
+        
+        // Header
+        const header = document.createElement('div');
+        header.className = 'category-header';
+        header.onclick = (e) => {
+            if (!e.target.closest('button')) {
+                togglePatternWeek(week.id);
+            }
+        };
+
+        header.innerHTML = `
+            <div class="category-icon-wrapper">
+                <span class="category-icon">📅</span>
+            </div>
+            <div class="category-info">
+                <h3 class="category-title">${week.title}</h3>
+                <div class="category-progress">
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" style="width: ${progressPercent}%"></div>
+                    </div>
+                    <span class="progress-text">${completedCount} / ${totalCount}</span>
+                </div>
+            </div>
+            <div class="category-actions">
+                 <button class="add-btn btn-xs" onclick="openAddSubSectionModal('${week.id}')" title="Add Day" style="padding: 4px 8px; margin-right: 5px;">+ Day</button>
+                <button class="toggle-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+            </div>
+        `;
+        
+        card.appendChild(header);
+
+        // Body (Days/Sub-sections)
+        if (isExpanded) {
+            const body = document.createElement('div');
+            body.className = 'category-body';
+            
+            // Render Sub-Sections (Days)
+            allSubSections.forEach(day => {
+                const dayIsExpanded = patternsExpandedSubCategories.has(day.id);
+                
+                // Get problems (including custom ones added to this day)
+                // We use customProblems[categoryID] logic where categoryID = day.id
+                const customDayProblems = customProblems[day.id] || [];
+                const allDayProblems = [...(day.problems || []), ...customDayProblems];
+                
+                const dayCompleted = allDayProblems.filter(p => patternsCompletedProblems.has(p.id.toString())).length;
+                const dayTotal = allDayProblems.length;
+                
+                const dayContainer = document.createElement('div');
+                dayContainer.className = 'sub-section-container'; 
+                dayContainer.style.marginBottom = '10px';
+                dayContainer.style.border = '1px solid rgba(255,255,255,0.1)';
+                dayContainer.style.borderRadius = '8px';
+                dayContainer.style.background = 'rgba(255,255,255,0.02)';
+
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'sub-section-header';
+                dayHeader.style.padding = '10px 15px';
+                dayHeader.style.cursor = 'pointer';
+                dayHeader.style.display = 'flex';
+                dayHeader.style.justifyContent = 'space-between';
+                dayHeader.style.alignItems = 'center';
+                
+                dayHeader.onclick = (e) => {
+                     if (!e.target.closest('button')) togglePatternDay(day.id);
+                };
+                
+                dayHeader.innerHTML = `
+                   <div style="display:flex; align-items:center; gap: 10px;">
+                        <span style="font-weight:600; color:var(--text-primary); font-size:0.95em;">${day.title}</span>
+                        <span style="font-size:0.8em; color:var(--text-secondary);">(${dayCompleted}/${dayTotal})</span>
+                   </div>
+                   <div style="display:flex; align-items:center; gap:10px;">
+                        <button class="add-btn btn-xs" onclick="openAddProblemModal('${day.id}')" title="Add Problem" style="font-size:0.8em;">+ Prob</button>
+                        <div style="transform: rotate(${dayIsExpanded ? '180deg' : '0deg'}); transition: transform 0.3s;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                   </div>
+                `;
+                
+                dayContainer.appendChild(dayHeader);
+
+                if (dayIsExpanded) {
+                    const problemsList = document.createElement('div');
+                    problemsList.className = 'problems-list';
+                    problemsList.style.display = 'block'; // Override default hidden
+                    
+                    if (allDayProblems.length === 0) {
+                        problemsList.innerHTML = `<div class="empty-problems">No problems yet. Add one!</div>`;
+                    } else {
+                        allDayProblems.forEach(problem => {
+                            problemsList.appendChild(createPatternProblemElement(problem, day.id));
+                        });
+                    }
+                    dayContainer.appendChild(problemsList);
+                }
+                
+                body.appendChild(dayContainer);
+            });
+
+            card.appendChild(body);
+        }
+        
+        grid.appendChild(card);
+    });
+}
+
+
+function getGlobalProgress() {
+    const total = getTotalProblemsCount();
+    return {
+        completed: completedProblems.size,
+        total: total,
+        percentage: total > 0 ? Math.round((completedProblems.size / total) * 100) : 0
+    };
+}
+
 // ===== Progress Tracker Updates =====
 function updateAllTrackers() {
     updateRoadmapTracker();
     updateMaangTracker();
+    updatePatternsProgress(); // Patterns
     updateTabCounts();
     if (currentTab === 'analytics') {
         renderAnalytics();
@@ -1272,11 +1500,22 @@ function handleAddProblem(event) {
     // Save and re-render
     saveCustomProblems();
     
-    // Keep category expanded
-    expandedCategories.add(categoryId);
+    // Check if this is a patterns category (pattern ID starts with 'pattern-' or 'custom-pattern-')
+    const isPatternCategory = categoryId.startsWith('pattern-') || categoryId.startsWith('custom-pattern-');
     
-    renderCategories();
-    updateAllTrackers();
+    if (isPatternCategory) {
+        // For patterns tab
+        patternsExpandedCategories.add(categoryId);
+        patternsExpandedSubCategories.add(categoryId);
+        renderPatternsTab();
+        updatePatternsProgress();
+    } else {
+        // For roadmap tab
+        expandedCategories.add(categoryId);
+        renderCategories();
+        updateAllTrackers();
+    }
+    
     closeAddProblemModal();
     
     // Show success message
@@ -1372,8 +1611,29 @@ function handleAddSection(event) {
         alert('Please enter a section title.');
         return;
     }
+
+    if (currentTab === 'patterns') {
+        const newTopic = {
+            id: `custom-topic-${Date.now()}`,
+            title: title,
+            icon: icon,
+            subSections: [],
+            isCustom: true
+        };
+        
+        customPatternsSections.push(newTopic);
+        
+        savePatternsCRUD();
+        patternsExpandedCategories.add(newTopic.id);
+        renderPatternsTab();
+        updatePatternsProgress();
+        closeAddSectionModal();
+        
+        showToast(`Topic "${title}" created successfully!`);
+        return;
+    }
     
-    // Create new section
+    // Create new section (Roadmap)
     const newSection = {
         id: getNextSectionId(),
         title: title,
@@ -2642,3 +2902,683 @@ function renderReviewTab() {
         }).join('');
     }
 }
+
+// ===== Patterns Tab Logic (3-Level: Topics → Patterns → Problems) =====
+
+let patternsReorderMode = false;
+let customPatternsSections = []; // User-created main sections
+let customPatternsSubSections = {}; // User-created sub-sections per main section
+let patternsTopicOrder = []; // Array of topic IDs to control display order
+
+function renderPatternsTab() {
+    const grid = document.getElementById('patterns-categories-grid');
+    if (!grid) return;
+    
+    grid.innerHTML = '';
+    
+    // Add Reorder Toggle Button
+    let reorderBtn = document.getElementById('patterns-reorder-toggle-btn');
+    if (!reorderBtn) {
+        const controls = document.createElement('div');
+        controls.className = 'controls-bar';
+        controls.style.marginBottom = '16px';
+        controls.style.display = 'flex';
+        controls.style.justifyContent = 'flex-end';
+        
+        controls.innerHTML = `
+            <button id="patterns-reorder-toggle-btn" class="btn-secondary" onclick="togglePatternsReorderMode()">
+                <span>⇅ Reorder Sections</span>
+            </button>
+        `;
+        
+        grid.parentNode.insertBefore(controls, grid);
+        reorderBtn = document.getElementById('patterns-reorder-toggle-btn');
+    }
+    
+    // Update button state
+    reorderBtn.innerHTML = patternsReorderMode 
+        ? '<span>✓ Done Reordering</span>' 
+        : '<span>⇅ Reorder Sections</span>';
+    reorderBtn.className = patternsReorderMode ? 'btn-primary' : 'btn-secondary';
+    
+    // Combine static and custom main sections
+    let allTopics = [...patternsData, ...customPatternsSections];
+    
+    // Apply custom order if exists
+    if (patternsTopicOrder.length > 0) {
+        allTopics = allTopics.sort((a, b) => {
+            const indexA = patternsTopicOrder.indexOf(a.id);
+            const indexB = patternsTopicOrder.indexOf(b.id);
+            // Items not in order array go to end
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
+        });
+    }
+    
+    allTopics.forEach((topic, index) => {
+        const isExpanded = patternsExpandedCategories.has(topic.id);
+        const progress = getTopicProgress(topic);
+        
+        // Drag attributes for reorder mode
+        const dragAttrs = patternsReorderMode ? `
+            draggable="true" 
+            ondragstart="handlePatternsDragStart(event, '${topic.id}')"
+            ondragover="handlePatternsDragOver(event)" 
+            ondrop="handlePatternsDrop(event, '${topic.id}')"
+            style="cursor: move; border: 2px dashed var(--accent-primary);"
+        ` : '';
+        
+        const card = document.createElement('div');
+        card.className = `category-card ${isExpanded ? 'expanded' : ''}`;
+        card.id = `pattern-topic-${topic.id}`;
+        if (patternsReorderMode) {
+            card.setAttribute('draggable', 'true');
+            card.ondragstart = (e) => handlePatternsDragStart(e, topic.id);
+            card.ondragover = handlePatternsDragOver;
+            card.ondrop = (e) => handlePatternsDrop(e, topic.id);
+            card.style.cursor = 'move';
+            card.style.border = '2px dashed var(--accent-primary)';
+        }
+        
+        // Header
+        const header = document.createElement('div');
+        header.className = 'category-header';
+        header.onclick = (e) => {
+            if (!e.target.closest('button') && !patternsReorderMode) {
+                togglePatternTopic(topic.id);
+            }
+        };
+        
+        header.innerHTML = `
+            <div class="category-info">
+                ${patternsReorderMode ? '<div style="font-size: 1.5rem; margin-right:8px; cursor:move;">☰</div>' : `<div class="category-icon">${topic.icon || '🎯'}</div>`}
+                <div class="category-details">
+                    <h3 class="category-title">
+                        ${topic.title}
+                        ${topic.isCustom ? '<span class="section-custom-badge">Custom</span>' : ''}
+                    </h3>
+                    ${!patternsReorderMode ? `
+                    <div class="category-progress-container">
+                        <div class="category-progress-bar">
+                            <div class="category-progress-fill" style="width: ${progress.percentage}%"></div>
+                        </div>
+                        <span class="category-progress-text">${progress.completed} / ${progress.total}</span>
+                    </div>
+                    ` : '<div style="font-size:0.8rem; color:var(--text-muted)">Drag to reorder</div>'}
+                </div>
+            </div>
+            ${!patternsReorderMode ? `
+                <button class="add-problem-btn" onclick="event.stopPropagation(); openAddPatternSubSectionModal('${topic.id}')" title="Add Pattern">+</button>
+                ${topic.isCustom ? `<button class="delete-section-btn" onclick="event.stopPropagation(); deletePatternSection('${topic.id}')" title="Delete Section">🗑️</button>` : ''}
+                <svg class="category-expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            ` : ''}
+        `;
+        
+        card.appendChild(header);
+        
+        // Expanded content (Sub-Sections)
+        if (isExpanded && !patternsReorderMode) {
+            const body = document.createElement('div');
+            body.className = 'problems-container';
+            body.style.display = 'block';
+            body.style.padding = '15px';
+            
+            // Get all sub-sections (static + custom)
+            const customSubs = customPatternsSubSections[topic.id] || [];
+            const allSubSections = [...(topic.subSections || []), ...customSubs];
+            
+            allSubSections.forEach(pattern => {
+                const patternDiv = renderPatternSubSection(topic.id, pattern);
+                body.appendChild(patternDiv);
+            });
+            
+            card.appendChild(body);
+        }
+        
+        grid.appendChild(card);
+    });
+}
+
+function renderPatternSubSection(topicId, pattern) {
+    const isExpanded = patternsExpandedSubCategories.has(pattern.id);
+    const customProbs = customProblems[pattern.id] || [];
+    const allProblems = [...(pattern.problems || []), ...customProbs];
+    const completed = allProblems.filter(p => patternsCompletedProblems.has(p.id.toString())).length;
+    const total = allProblems.length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    const container = document.createElement('div');
+    container.className = `pattern-card ${isExpanded ? 'expanded' : ''}`;
+    container.id = `pattern-card-${pattern.id}`;
+    
+    // Pattern Card Header - matching category-header style
+    container.innerHTML = `
+        <div class="pattern-card-header" onclick="togglePatternSubSection('${pattern.id}')">
+            <div class="pattern-info">
+                <div class="pattern-icon">📝</div>
+                <div class="pattern-details">
+                    <h4 class="pattern-title">
+                        ${pattern.title}
+                        ${pattern.isCustom ? '<span class="custom-badge">Custom</span>' : ''}
+                    </h4>
+                    <div class="pattern-progress-container">
+                        <div class="pattern-progress-bar">
+                            <div class="pattern-progress-fill" style="width: ${percentage}%"></div>
+                        </div>
+                        <span class="pattern-progress-text">${completed} / ${total}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="pattern-actions">
+                <button class="add-problem-btn" onclick="event.stopPropagation(); openAddProblemModal('${pattern.id}')" title="Add Problem">+</button>
+                ${pattern.isCustom ? `<button class="delete-section-btn" onclick="event.stopPropagation(); deletePatternSubSection('${topicId}', '${pattern.id}')" title="Delete Pattern">🗑️</button>` : ''}
+                <svg class="pattern-expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+        </div>
+        <div class="pattern-problems-container">
+            ${isExpanded ? renderPatternProblemsContent(pattern, allProblems) : ''}
+        </div>
+    `;
+    
+    return container;
+}
+
+function renderPatternProblemsContent(pattern, allProblems) {
+    if (allProblems.length === 0) {
+        return '<div class="empty-problems-message">No problems yet. Click "+" to add one.</div>';
+    }
+    
+    return `
+        <table class="problems-table">
+            <thead>
+                <tr>
+                    <th>Problem</th>
+                    <th>Difficulty</th>
+                    <th>LeetCode</th>
+                    <th>Score</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${allProblems.map(p => renderPatternProblemRow(p, pattern.id)).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function renderPatternProblemRow(problem, patternId) {
+    const isCompleted = patternsCompletedProblems.has(problem.id.toString());
+    const difficultyClass = `difficulty-${problem.difficulty.toLowerCase()}`;
+    const isCustom = problem.isCustom === true;
+    
+    return `
+        <tr>
+            <td>
+                <a href="${problem.leetcodeUrl}" target="_blank" class="problem-link problem-name">
+                    ${problem.name}
+                    ${isCustom ? '<span class="custom-badge">Custom</span>' : ''}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                </a>
+            </td>
+            <td>
+                <span class="difficulty-badge ${difficultyClass}">${problem.difficulty}</span>
+            </td>
+            <td>
+                <a href="${problem.leetcodeUrl}" target="_blank" class="leetcode-link" title="Open on LeetCode">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M13.483 0a1.374 1.374 0 0 0-.961.438L7.116 6.226l-3.854 4.126a5.266 5.266 0 0 0-1.209 2.104 5.35 5.35 0 0 0-.125.513 5.527 5.527 0 0 0 .062 2.362 5.83 5.83 0 0 0 .349 1.017 5.938 5.938 0 0 0 1.271 1.818l4.277 4.193.039.038c2.248 2.165 5.852 2.133 8.063-.074l2.396-2.392c.54-.54.54-1.414.003-1.955a1.378 1.378 0 0 0-1.951-.003l-2.396 2.392a3.021 3.021 0 0 1-4.205.038l-.02-.019-4.276-4.193c-.652-.64-.972-1.469-.948-2.263a2.68 2.68 0 0 1 .066-.523 2.545 2.545 0 0 1 .619-1.164L9.13 8.114c1.058-1.134 3.204-1.27 4.43-.278l3.501 2.831c.593.48 1.461.387 1.94-.207a1.384 1.384 0 0 0-.207-1.943l-3.5-2.831c-.8-.647-1.766-1.045-2.774-1.202l2.015-2.158A1.384 1.384 0 0 0 13.483 0zm-2.866 12.815a1.38 1.38 0 0 0-1.38 1.382 1.38 1.38 0 0 0 1.38 1.382H20.79a1.38 1.38 0 0 0 1.38-1.382 1.38 1.38 0 0 0-1.38-1.382z"/>
+                    </svg>
+                </a>
+            </td>
+            <td>
+                <span class="score-badge">${problem.score || '5/10'}</span>
+            </td>
+            <td>
+                <div class="status-cell">
+                    <input 
+                        type="checkbox" 
+                        class="status-checkbox" 
+                        ${isCompleted ? 'checked' : ''} 
+                        onchange="togglePatternProblem('${problem.id}', '${patternId}', this)"
+                        aria-label="Mark ${problem.name} as ${isCompleted ? 'incomplete' : 'complete'}"
+                    >
+                    ${isCustom ? `<button class="delete-btn" onclick="event.stopPropagation(); deletePatternProblem('${problem.id}', '${patternId}')" title="Delete Problem">🗑️</button>` : ''}
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+// ===== Toggle Functions =====
+function togglePatternTopic(topicId) {
+    if (patternsExpandedCategories.has(topicId)) {
+        patternsExpandedCategories.delete(topicId);
+    } else {
+        patternsExpandedCategories.add(topicId);
+    }
+    renderPatternsTab();
+}
+
+function togglePatternSubSection(patternId) {
+    if (patternsExpandedSubCategories.has(patternId)) {
+        patternsExpandedSubCategories.delete(patternId);
+    } else {
+        patternsExpandedSubCategories.add(patternId);
+    }
+    renderPatternsTab();
+}
+
+// Helper to find pattern and its parent topic
+function findPatternAndTopic(patternId) {
+    if (typeof patternsData === 'undefined') return { pattern: null, topic: null };
+    
+    const allTopics = [...patternsData, ...customPatternsSections];
+    for (const topic of allTopics) {
+        const customSubs = customPatternsSubSections[topic.id] || [];
+        const allSubs = [...(topic.subSections || []), ...customSubs];
+        const pattern = allSubs.find(p => p.id === patternId);
+        if (pattern) return { pattern, topic };
+    }
+    return { pattern: null, topic: null };
+}
+
+function updatePatternSubSectionProgress(patternId) {
+    const { pattern } = findPatternAndTopic(patternId);
+    if (!pattern) {
+        console.error('[DEBUG] Pattern not found for ID', patternId);
+        return;
+    }
+
+    const customProbs = customProblems[pattern.id] || [];
+    const allProbs = [...(pattern.problems || []), ...customProbs];
+    const total = allProbs.length;
+    const completed = allProbs.filter(p => patternsCompletedProblems.has(p.id.toString())).length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    // Update Pattern Card Progress using direct DOM ID lookup
+    const card = document.getElementById(`pattern-card-${pattern.id}`);
+    if (card) {
+        const fill = card.querySelector('.pattern-progress-fill');
+        const text = card.querySelector('.pattern-progress-text');
+        
+        if (fill) fill.style.width = `${percentage}%`;
+        if (text) text.textContent = `${completed} / ${total}`;
+    }
+}
+
+function updatePatternTopicProgress(topicId) {
+    const allTopics = [...patternsData, ...customPatternsSections];
+    const topic = allTopics.find(t => t.id === topicId);
+    if (!topic) return;
+
+    const progress = getTopicProgress(topic);
+    
+    // Update Topic Card Progress using direct DOM ID lookup
+    const card = document.getElementById(`pattern-topic-${topic.id}`);
+    if (card) {
+        const fill = card.querySelector('.category-progress-fill');
+        const text = card.querySelector('.category-progress-text');
+        if (fill) fill.style.width = `${progress.percentage}%`;
+        if (text) text.textContent = `${progress.completed} / ${progress.total}`;
+    }
+}
+
+function togglePatternProblem(problemId, patternId, checkboxEl) {
+    const pid = problemId.toString();
+    const isCompleting = !patternsCompletedProblems.has(pid);
+    
+    if (isCompleting) {
+        patternsCompletedProblems.add(pid);
+    } else {
+        patternsCompletedProblems.delete(pid);
+    }
+    savePatternsState();
+    
+    // Find parent topic for the pattern
+    const { topic } = findPatternAndTopic(patternId);
+    
+    // Update Pattern Level (subsection)
+    updatePatternSubSectionProgress(patternId);
+    
+    // Update Topic Level (main section)
+    if (topic) {
+        updatePatternTopicProgress(topic.id);
+    }
+    
+    // Update Global Level (Header)
+    updatePatternsProgress();
+    
+    // Show confetti AFTER all progress updates (so animation doesn't block updates)
+    if (isCompleting) {
+        setTimeout(() => showConfetti(), 0);
+    }
+}
+
+function togglePatternsReorderMode() {
+    patternsReorderMode = !patternsReorderMode;
+    renderPatternsTab();
+}
+
+// ===== Progress Calculation =====
+function getTopicProgress(topic) {
+    const customSubs = customPatternsSubSections[topic.id] || [];
+    const allSubSections = [...(topic.subSections || []), ...customSubs];
+    
+    let total = 0;
+    let completed = 0;
+    
+    allSubSections.forEach(pattern => {
+        const customProbs = customProblems[pattern.id] || [];
+        const allProbs = [...(pattern.problems || []), ...customProbs];
+        total += allProbs.length;
+        completed += allProbs.filter(p => patternsCompletedProblems.has(p.id.toString())).length;
+    });
+    
+    return {
+        completed,
+        total,
+        percentage: total > 0 ? Math.round((completed / total) * 100) : 0
+    };
+}
+
+function updatePatternsProgress() {
+    let total = 0;
+    let completed = 0;
+    
+    const allTopics = [...patternsData, ...customPatternsSections];
+    allTopics.forEach(topic => {
+        const progress = getTopicProgress(topic);
+        total += progress.total;
+        completed += progress.completed;
+    });
+    
+    const text = document.getElementById('patterns-progress-text');
+    const fill = document.getElementById('patterns-progress-fill');
+    
+    if (text) text.textContent = `${completed} / ${total}`;
+    if (fill) fill.style.width = `${total === 0 ? 0 : (completed / total) * 100}%`;
+    
+    // Update main tab count
+    const tabCount = document.getElementById('patterns-count');
+    if (tabCount) tabCount.textContent = `${completed}/${total}`;
+}
+
+// ===== CRUD: Add Main Section =====
+function openAddPatternSectionModal() {
+    openAddSectionModal(); // Reuse existing modal
+}
+
+// ===== CRUD: Add Sub-Section (Pattern) =====
+function openAddPatternSubSectionModal(topicId) {
+    document.getElementById('add-sub-section-modal').classList.remove('hidden');
+    document.getElementById('parent-section-id').value = topicId;
+    document.getElementById('sub-section-title').value = '';
+}
+
+function handleAddSubSection(event) {
+    event.preventDefault();
+    const parentId = document.getElementById('parent-section-id').value;
+    const title = document.getElementById('sub-section-title').value.trim();
+    
+    if (!title) return;
+    
+    const newPattern = {
+        id: `custom-pattern-${Date.now()}`,
+        title: title,
+        problems: [],
+        isCustom: true
+    };
+    
+    if (!customPatternsSubSections[parentId]) {
+        customPatternsSubSections[parentId] = [];
+    }
+    customPatternsSubSections[parentId].push(newPattern);
+    
+    savePatternsCRUD();
+    patternsExpandedCategories.add(parentId);
+    renderPatternsTab();
+    updatePatternsProgress();
+    closeAddSubSectionModal();
+    showToast(`Pattern "${title}" added successfully!`);
+}
+
+function closeAddSubSectionModal() {
+    document.getElementById('add-sub-section-modal').classList.add('hidden');
+}
+
+// ===== Custom Confirm Modal =====
+let confirmCallback = null;
+
+function showConfirmModal(title, message, buttonText, callback) {
+    document.getElementById('confirm-modal-title').textContent = title;
+    document.getElementById('confirm-modal-message').textContent = message;
+    document.getElementById('confirm-modal-btn').textContent = buttonText || 'Delete';
+    confirmCallback = callback;
+    document.getElementById('confirm-modal').classList.remove('hidden');
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirm-modal').classList.add('hidden');
+    confirmCallback = null;
+}
+
+function executeConfirmAction() {
+    if (confirmCallback) {
+        confirmCallback();
+    }
+    closeConfirmModal();
+}
+
+// ===== CRUD: Create Main Section =====
+function openAddPatternSectionModal() {
+    document.getElementById('add-section-modal').classList.remove('hidden');
+    document.getElementById('section-title').value = '';
+    document.getElementById('section-icon').value = '🎯';
+    // Set a flag to indicate we're adding a pattern section
+    document.getElementById('add-section-form').dataset.isPattern = 'true';
+}
+
+// ===== CRUD: Delete =====
+function deletePatternSection(topicId) {
+    showConfirmModal(
+        '⚠️ Delete Topic',
+        'Delete this entire topic and all its patterns? This action cannot be undone.',
+        'Delete Topic',
+        () => {
+            customPatternsSections = customPatternsSections.filter(s => s.id !== topicId);
+            delete customPatternsSubSections[topicId];
+            
+            savePatternsCRUD();
+            renderPatternsTab();
+            updatePatternsProgress();
+            showToast('Topic deleted successfully');
+        }
+    );
+}
+
+function deletePatternSubSection(topicId, patternId) {
+    showConfirmModal(
+        '⚠️ Delete Pattern',
+        'Delete this pattern and all its problems? This action cannot be undone.',
+        'Delete Pattern',
+        () => {
+            if (customPatternsSubSections[topicId]) {
+                customPatternsSubSections[topicId] = customPatternsSubSections[topicId].filter(p => p.id !== patternId);
+            }
+            
+            // Also delete any custom problems for this pattern
+            delete customProblems[patternId];
+            
+            savePatternsCRUD();
+            saveCustomProblems();
+            renderPatternsTab();
+            updatePatternsProgress();
+            showToast('Pattern deleted successfully');
+        }
+    );
+}
+
+function deletePatternProblem(problemId, patternId) {
+    showConfirmModal(
+        '⚠️ Delete Problem',
+        'Are you sure you want to delete this problem?',
+        'Delete',
+        () => {
+            if (customProblems[patternId]) {
+                customProblems[patternId] = customProblems[patternId].filter(p => p.id.toString() !== problemId.toString());
+                saveCustomProblems();
+                renderPatternsTab();
+                updatePatternsProgress();
+                showToast('Problem deleted successfully');
+            }
+        }
+    );
+}
+
+// ===== Drag & Drop for Reorder =====
+let patternsDraggedItemId = null;
+
+function handlePatternsDragStart(e, id) {
+    patternsDraggedItemId = id;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+    e.target.style.opacity = '0.4';
+}
+
+function handlePatternsDragOver(e) {
+    if (e.preventDefault) e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function handlePatternsDrop(e, targetId) {
+    if (e.stopPropagation) e.stopPropagation();
+    
+    if (!patternsDraggedItemId || patternsDraggedItemId === targetId) {
+        patternsDraggedItemId = null;
+        return false;
+    }
+    
+    // Get all topics and build order array if not exists
+    const allTopics = [...patternsData, ...customPatternsSections];
+    if (patternsTopicOrder.length === 0) {
+        patternsTopicOrder = allTopics.map(t => t.id);
+    }
+    
+    // Find positions
+    const draggedIndex = patternsTopicOrder.indexOf(patternsDraggedItemId);
+    const targetIndex = patternsTopicOrder.indexOf(targetId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) {
+        patternsDraggedItemId = null;
+        return false;
+    }
+    
+    // Remove dragged item and insert at target position
+    patternsTopicOrder.splice(draggedIndex, 1);
+    patternsTopicOrder.splice(targetIndex, 0, patternsDraggedItemId);
+    
+    // Save order to localStorage
+    savePatternsTopicOrder();
+    
+    // Re-render
+    renderPatternsTab();
+    
+    patternsDraggedItemId = null;
+    showToast('Sections reordered!');
+    return false;
+}
+
+function savePatternsTopicOrder() {
+    try {
+        localStorage.setItem('leetcode-tracker-patterns-order', JSON.stringify(patternsTopicOrder));
+        
+        // Cloud sync
+        if (typeof authService !== 'undefined' && authService.isAuthenticated()) {
+            const data = dataSync.collectLocalProgress();
+            dataSync.debouncedSave(authService.getUserId(), data);
+        }
+    } catch (e) {
+        console.error('Failed to save patterns order:', e);
+    }
+}
+
+function loadPatternsTopicOrder() {
+    try {
+        const saved = localStorage.getItem('leetcode-tracker-patterns-order');
+        if (saved) {
+            patternsTopicOrder = JSON.parse(saved);
+        }
+    } catch (e) {
+        console.error('Failed to load patterns order:', e);
+    }
+}
+
+// ===== State Management =====
+function loadPatternsState() {
+    try {
+        const saved = localStorage.getItem('leetcode-tracker-patterns-completed');
+        if (saved) {
+            patternsCompletedProblems = new Set(JSON.parse(saved));
+        }
+        
+        const savedExpanded = localStorage.getItem('leetcode-tracker-patterns-expanded');
+        if (savedExpanded) {
+            patternsExpandedCategories = new Set(JSON.parse(savedExpanded));
+        }
+        
+        const savedSubExpanded = localStorage.getItem('leetcode-tracker-patterns-sub-expanded');
+        if (savedSubExpanded) {
+            patternsExpandedSubCategories = new Set(JSON.parse(savedSubExpanded));
+        }
+        
+        // Load custom sections and sub-sections
+        const savedCustomSections = localStorage.getItem('leetcode-tracker-patterns-custom-sections');
+        if (savedCustomSections) {
+            customPatternsSections = JSON.parse(savedCustomSections);
+        }
+        
+        const savedCustomSubSections = localStorage.getItem('leetcode-tracker-patterns-custom-subsections');
+        if (savedCustomSubSections) {
+            customPatternsSubSections = JSON.parse(savedCustomSubSections);
+        }
+    } catch (e) {
+        console.error('Failed to load patterns state:', e);
+    }
+}
+
+function savePatternsState() {
+    try {
+        localStorage.setItem('leetcode-tracker-patterns-completed', JSON.stringify([...patternsCompletedProblems]));
+        localStorage.setItem('leetcode-tracker-patterns-expanded', JSON.stringify([...patternsExpandedCategories]));
+        localStorage.setItem('leetcode-tracker-patterns-sub-expanded', JSON.stringify([...patternsExpandedSubCategories]));
+        
+        // Cloud sync
+        if (typeof authService !== 'undefined' && authService.isAuthenticated()) {
+            const data = dataSync.collectLocalProgress();
+            dataSync.debouncedSave(authService.getUserId(), data);
+        }
+    } catch (e) {
+        console.error('Failed to save patterns state:', e);
+    }
+}
+
+function savePatternsCRUD() {
+    localStorage.setItem('leetcode-tracker-patterns-custom-sections', JSON.stringify(customPatternsSections));
+    localStorage.setItem('leetcode-tracker-patterns-custom-subsections', JSON.stringify(customPatternsSubSections));
+    
+    if (typeof authService !== 'undefined' && authService.isAuthenticated()) {
+        const data = dataSync.collectLocalProgress();
+        dataSync.debouncedSave(authService.getUserId(), data);
+    }
+}
+

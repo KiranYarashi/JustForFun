@@ -120,13 +120,16 @@ class DataSyncAPI {
         return {
             completed: JSON.parse(localStorage.getItem('leetcode-tracker-completed') || '[]'),
             maangCompleted: JSON.parse(localStorage.getItem('maang-tracker-completed') || '[]'),
+            patternsCompleted: JSON.parse(localStorage.getItem('leetcode-tracker-patterns-completed') || '[]'),
             customProblems: JSON.parse(localStorage.getItem('leetcode-tracker-custom-problems') || '{}'),
             customSections: JSON.parse(localStorage.getItem('leetcode-tracker-custom-sections') || '[]'),
+            patternsCustomSections: JSON.parse(localStorage.getItem('leetcode-tracker-patterns-custom-sections') || '[]'),
+            patternsCustomSubSections: JSON.parse(localStorage.getItem('leetcode-tracker-patterns-custom-subsections') || '{}'),
             notes: JSON.parse(localStorage.getItem('leetcode-tracker-notes') || '{}'),
             history: JSON.parse(localStorage.getItem('leetcode-tracker-history') || '{}'),
             order: JSON.parse(localStorage.getItem('leetcode-tracker-order') || '[]'),
             theme: localStorage.getItem('theme') || 'dark',
-            srs: JSON.parse(localStorage.getItem('leetcode-tracker-srs') || '{}') // Add SRS
+            srs: JSON.parse(localStorage.getItem('leetcode-tracker-srs') || '{}')
         };
     }
 
@@ -144,11 +147,20 @@ class DataSyncAPI {
         if (data.maangCompleted) {
             localStorage.setItem('maang-tracker-completed', JSON.stringify(data.maangCompleted));
         }
+        if (data.patternsCompleted) {
+            localStorage.setItem('leetcode-tracker-patterns-completed', JSON.stringify(data.patternsCompleted));
+        }
         if (data.customProblems) {
             localStorage.setItem('leetcode-tracker-custom-problems', JSON.stringify(data.customProblems));
         }
         if (data.customSections) {
             localStorage.setItem('leetcode-tracker-custom-sections', JSON.stringify(data.customSections));
+        }
+        if (data.patternsCustomSections) {
+            localStorage.setItem('leetcode-tracker-patterns-custom-sections', JSON.stringify(data.patternsCustomSections));
+        }
+        if (data.patternsCustomSubSections) {
+            localStorage.setItem('leetcode-tracker-patterns-custom-subsections', JSON.stringify(data.patternsCustomSubSections));
         }
         if (data.notes) {
             localStorage.setItem('leetcode-tracker-notes', JSON.stringify(data.notes));

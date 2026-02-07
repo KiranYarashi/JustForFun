@@ -227,6 +227,9 @@ a:hover {
     display: flex;
     align-items: center;
     gap: 12px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
     animation: fadeIn 0.3s ease;
 }
 
@@ -235,23 +238,24 @@ a:hover {
 }
 
 .user-avatar {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background: var(--accent-gradient);
+    background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
     font-size: 14px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
 }
 
 .user-info {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    gap: 2px;
 }
 
 .user-name {
@@ -261,18 +265,40 @@ a:hover {
     line-height: 1.2;
 }
 
+.admin-badge {
+    font-size: 0.65rem;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.user-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px;
+    padding-left: 12px;
+    border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 .sync-status {
     font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(34, 197, 94, 0.2);
+    padding: 4px 8px;
+    border-radius: 4px;
 }
 
 .logout-btn {
-    background: transparent;
+    background: rgba(255, 255, 255, 0.1);
     border: none;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
-    padding: 6px;
-    border-radius: 50%;
+    padding: 8px;
+    border-radius: var(--radius-sm);
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
@@ -280,8 +306,8 @@ a:hover {
 }
 
 .logout-btn:hover {
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.1);
+    color: white;
+    background: rgba(239, 68, 68, 0.3);
 }
 
 @keyframes fadeIn {
@@ -3133,4 +3159,297 @@ a:hover {
     .review-divider {
         margin: 0 10px;
     }
+}
+
+/* ===== Custom Confirm Modal ===== */
+.confirm-modal-content {
+    max-width: 420px;
+}
+
+.confirm-modal-body {
+    padding: 20px 24px;
+    text-align: center;
+}
+
+.confirm-modal-body p {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+/* ===== Danger Button ===== */
+.btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+/* ===== Sub-Section Improved Styling ===== */
+.sub-section-container {
+    margin-bottom: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.02);
+    transition: all 0.2s ease;
+}
+
+.sub-section-container:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(139, 92, 246, 0.3);
+}
+
+.sub-section-header {
+    padding: 14px 18px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s ease;
+}
+
+.sub-section-header:hover {
+    background: rgba(139, 92, 246, 0.08);
+}
+
+/* ===== Section Custom Badge ===== */
+.section-custom-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--accent-gradient);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: var(--radius-sm);
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+/* ===== Delete Section Button ===== */
+.delete-section-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    margin-right: 8px;
+}
+
+.delete-section-btn:hover {
+    background: var(--danger-bg);
+}
+
+/* ===== Pattern Card Styling (Matches Category Card) ===== */
+.pattern-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    margin-bottom: 12px;
+}
+
+.pattern-card:hover {
+    border-color: var(--accent-primary);
+}
+
+.pattern-card.expanded {
+    border-color: var(--accent-primary);
+    box-shadow: var(--shadow-md);
+}
+
+.pattern-card-header {
+    padding: 16px 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.2s ease;
+}
+
+.pattern-card-header:hover {
+    background: rgba(139, 92, 246, 0.08);
+}
+
+.pattern-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+}
+
+.pattern-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    border-radius: var(--radius-sm);
+    font-size: 18px;
+    color: white;
+}
+
+.pattern-details {
+    flex: 1;
+}
+
+.pattern-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pattern-progress-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 300px;
+}
+
+.pattern-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--bg-primary);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.pattern-progress-fill {
+    height: 100%;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+
+.pattern-progress-text {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    min-width: 50px;
+    text-align: right;
+}
+
+.pattern-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pattern-expand-icon {
+    width: 22px;
+    height: 22px;
+    color: var(--accent-primary);
+    transition: transform 0.3s ease;
+    background: var(--bg-primary);
+    border-radius: 50%;
+    padding: 3px;
+}
+
+.pattern-card.expanded .pattern-expand-icon {
+    transform: rotate(180deg);
+    background: var(--accent-primary);
+    color: white;
+}
+
+.pattern-problems-container {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+}
+
+.pattern-card.expanded .pattern-problems-container {
+    max-height: 3000px;
+    padding: 0 20px 16px 20px;
+}
+
+.empty-problems-message {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: 16px;
+    text-align: center;
+    font-style: italic;
+}
+
+/* ===== Add Problem Button (Consistent Style) ===== */
+.add-problem-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-gradient);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.add-problem-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+/* ===== Create Topic Button (Patterns Mastery Style) ===== */
+.create-topic-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    background: var(--bg-tertiary);
+    border: 2px dashed var(--accent-primary);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 16px;
+}
+
+.create-topic-btn:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-style: solid;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.create-topic-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--accent-gradient);
+    border-radius: 50%;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
 }
