@@ -1512,6 +1512,19 @@ function handleAddProblem(event) {
         patternsExpandedSubCategories.add(categoryId);
         renderPatternsTab();
         updatePatternsProgress();
+        
+        // Save to shared API for global visibility
+        if (authService.isAuthenticated() && typeof sharedPatternsAPI !== 'undefined') {
+            sharedPatternsAPI.add('problem', {
+                id: newProblem.id,
+                title: newProblem.name,
+                difficulty: newProblem.difficulty,
+                leetcodeUrl: newProblem.leetcodeUrl,
+                score: newProblem.score
+            }, categoryId)
+            .then(() => console.log('Shared problem saved'))
+            .catch(err => console.error('Failed to save shared problem:', err));
+        }
     } else {
         // For roadmap tab
         expandedCategories.add(categoryId);
@@ -1525,7 +1538,7 @@ function handleAddProblem(event) {
     showToast(`Problem "${name}" added successfully!`);
 }
 
-function deleteProblem(problemId, categoryId) {
+async function deleteProblem(problemId, categoryId) {
     if (!confirm(`Are you sure you want to delete this problem? (ID: ${problemId})`)) {
         return;
     }
@@ -1577,10 +1590,22 @@ function deleteProblem(problemId, categoryId) {
         
         if (problemHistory[probIdStr]) delete problemHistory[probIdStr];
         
-        // Save
+        // Save local
         saveCustomProblems();
         saveState();
         saveHistory();
+        
+        // Check if shared pattern and delete from API
+        const isPatternCategory = categoryId && (categoryId.startsWith('pattern-') || categoryId.startsWith('custom-pattern-'));
+        if (isPatternCategory && authService.isAuthenticated() && typeof sharedPatternsAPI !== 'undefined') {
+            try {
+                await sharedPatternsAPI.delete(problemId);
+                console.log('Shared problem deleted');
+            } catch (err) {
+                console.error('Failed to delete shared problem:', err);
+                // Continue with reload anyway
+            }
+        }
         
         alert('Problem Deleted Successfully! Page will now reload to verify.');
         location.reload(); 
