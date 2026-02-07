@@ -320,7 +320,9 @@ async function handleAuthSubmit(event) {
                 // CRITICAL: Re-initialize sets from the potentially updated localStorage
                 // This ensures loadState() sees the cloud data we just downloaded
                 const savedPatterns = localStorage.getItem('leetcode-tracker-patterns-completed');
-                if (savedPatterns) patternsCompletedProblems = new Set(JSON.parse(savedPatterns));
+                if (savedPatterns) {
+                    patternsCompletedProblems = new Set(JSON.parse(savedPatterns).map(id => String(id)));
+                }
                 
                 const savedCustomPatterns = localStorage.getItem('leetcode-tracker-custom-patterns');
                 if (savedCustomPatterns) {
@@ -568,7 +570,7 @@ function loadState() {
     try {
         const saved = localStorage.getItem('leetcode-tracker-completed');
         if (saved) {
-            completedProblems = new Set(JSON.parse(saved));
+            completedProblems = new Set(JSON.parse(saved).map(id => String(id)));
         }
         
         // Merge from cloud if available (in case sync happened but loadState wasn't refreshed fully)
@@ -579,7 +581,7 @@ function loadState() {
              // However, valid patternsCompletedProblems needs to be initialized from storage too!
              const savedPatterns = localStorage.getItem('leetcode-tracker-patterns-completed');
              if (savedPatterns) {
-                 patternsCompletedProblems = new Set(JSON.parse(savedPatterns));
+                 patternsCompletedProblems = new Set(JSON.parse(savedPatterns).map(id => String(id)));
              }
         }
 
@@ -1009,7 +1011,7 @@ function closeFaangBanner() {
 // ===== Progress Calculations =====
 function getCategoryProgress(categoryId) {
     const allProblems = getAllProblemsForCategory(categoryId);
-    const completed = allProblems.filter(p => completedProblems.has(p.id)).length;
+    const completed = allProblems.filter(p => completedProblems.has(String(p.id))).length;
     return {
         completed,
         total: allProblems.length,
@@ -1019,10 +1021,11 @@ function getCategoryProgress(categoryId) {
 
 function getGlobalProgress() {
     const total = getTotalProblemsCount();
+    const completedCount = getCompletedProblemsCount();
     return {
-        completed: completedProblems.size,
+        completed: completedCount,
         total: total,
-        percentage: total > 0 ? Math.round((completedProblems.size / total) * 100) : 0
+        percentage: total > 0 ? Math.round((completedCount / total) * 100) : 0
     };
 }
 
@@ -1122,9 +1125,10 @@ function renderPatternsTab() {
         const customDays = (customPatternsData.customDays && customPatternsData.customDays[week.id]) || [];
         const allSubSections = [...week.subSections, ...customDays];
         
-        const completedCount = getWeekCompletedCount({ ...week, subSections: allSubSections });
-        const totalCount = getWeekTotalCount({ ...week, subSections: allSubSections });
-        const progressPercent = totalCount === 0 ? 0 : (completedCount / totalCount) * 100;
+        const weekProgress = getTopicProgress({ ...week, subSections: allSubSections });
+        const completedCount = weekProgress.completed;
+        const totalCount = weekProgress.total;
+        const progressPercent = weekProgress.percentage;
         
         const card = document.createElement('div');
         card.className = `category-card ${isExpanded ? 'expanded' : ''}`;
@@ -1242,18 +1246,11 @@ function renderPatternsTab() {
 }
 
 
-function getGlobalProgress() {
-    const total = getTotalProblemsCount();
-    return {
-        completed: completedProblems.size,
-        total: total,
-        percentage: total > 0 ? Math.round((completedProblems.size / total) * 100) : 0
-    };
-}
+
 
 // ===== Progress Tracker Updates =====
 function updateAllTrackers() {
-    updateRoadmapTracker();
+    updateRoadmapProgress();
     updateMaangTracker();
     updatePatternsProgress(); // Patterns
     updateTabCounts();
@@ -1262,14 +1259,7 @@ function updateAllTrackers() {
     }
 }
 
-function updateRoadmapTracker() {
-    const progress = getGlobalProgress();
-    const textEl = document.getElementById('roadmap-progress-text');
-    const fillEl = document.getElementById('roadmap-progress-fill');
-    
-    if (textEl) textEl.textContent = `${progress.completed} / ${progress.total}`;
-    if (fillEl) fillEl.style.width = `${progress.percentage}%`;
-}
+
 
 function updateMaangTracker() {
     const total = getMaangTotalProblemsCount();
@@ -1327,6 +1317,9 @@ function renderCategories() {
     reorderBtn.className = isReorderMode ? 'btn-primary' : 'btn-secondary';
 
     grid.innerHTML = allCategories.map((category, index) => renderCategoryCard(category, index)).join('');
+    
+    // Ensure overall progress is updated whenever categories render
+    updateRoadmapProgress();
 }
 
 function toggleReorderMode() {
@@ -1446,8 +1439,8 @@ function renderProblemsTable(category) {
                 <tr>
                     <th>Problem</th>
                     <th>Difficulty</th>
-                    <th>Leetcode</th>
-                    <th>Difficulty Score</th>
+                    <th>LeetCode</th>
+                    <th>Score</th>
                     <th>Notes</th>
                     <th>Status</th>
                 </tr>
@@ -1460,10 +1453,11 @@ function renderProblemsTable(category) {
 }
 
 function renderProblemRow(problem, categoryId) {
-    const isCompleted = completedProblems.has(problem.id);
+    const probIdStr = String(problem.id);
+    const isCompleted = completedProblems.has(probIdStr);
     const difficultyClass = `difficulty-${problem.difficulty.toLowerCase()}`;
     const isCustom = problem.isCustom === true;
-    const hasNote = problemNotes[problem.id] && problemNotes[problem.id].trim().length > 0;
+    const hasNote = problemNotes[probIdStr] && problemNotes[probIdStr].trim().length > 0;
     
     // Check ownership for delete button
     const currentUserId = authService.getUserId();
@@ -1471,31 +1465,52 @@ function renderProblemRow(problem, categoryId) {
     
     // Only show delete button if user is creator
     const deleteButtonHtml = isCreator ? 
-        `<button class="delete-btn" onclick="deleteProblem('${problem.id}', '${categoryId}')" title="Delete Problem">🗑️</button>` : 
+        `<button class="delete-btn" onclick="deleteProblem('${probIdStr}', '${categoryId}')" title="Delete Problem">🗑️</button>` : 
         '';
 
     return `
-        <tr class="problem-row ${isCompleted ? 'completed' : ''}" data-id="${problem.id}">
-            <td class="status-col">
-                <input type="checkbox" 
-                    id="p-${problem.id}" 
-                    ${isCompleted ? 'checked' : ''} 
-                    onchange="toggleProblem('${problem.id}', '${categoryId}')">
+        <tr class="problem-row ${isCompleted ? 'completed' : ''}" data-id="${probIdStr}">
+            <td>
+                <a href="${problem.leetcodeUrl}" target="_blank" class="problem-link problem-name">
+                    ${problem.name}
+                    ${isCustom ? '<span class="custom-badge">Custom</span>' : ''}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                </a>
             </td>
-            <td class="problem-col">
-                <a href="${problem.leetcodeUrl}" target="_blank" class="problem-link">${problem.name}</a>
-                ${isCustom ? '<span class="custom-badge">Custom</span>' : ''}
-            </td>
-            <td class="difficulty-col">
+            <td>
                 <span class="difficulty-badge ${difficultyClass}">${problem.difficulty}</span>
             </td>
-            <td class="note-col">
-                 <button class="note-btn ${hasNote ? 'has-note' : ''}" onclick="openNoteModal('${problem.id}')" title="${hasNote ? 'Edit Note' : 'Add Note'}">
-                    ${hasNote ? '📝' : '➕'}
+            <td>
+                <a href="${problem.leetcodeUrl}" target="_blank" class="leetcode-link" title="Open on LeetCode">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M13.483 0a1.374 1.374 0 0 0-.961.438L7.116 6.226l-3.854 4.126a5.266 5.266 0 0 0-1.209 2.104 5.35 5.35 0 0 0-.125.513 5.527 5.527 0 0 0 .062 2.362 5.83 5.83 0 0 0 .349 1.017 5.938 5.938 0 0 0 1.271 1.818l4.277 4.193.039.038c2.248 2.165 5.852 2.133 8.063-.074l2.396-2.392c.54-.54.54-1.414.003-1.955a1.378 1.378 0 0 0-1.951-.003l-2.396 2.392a3.021 3.021 0 0 1-4.205.038l-.02-.019-4.276-4.193c-.652-.64-.972-1.469-.948-2.263a2.68 2.68 0 0 1 .066-.523 2.545 2.545 0 0 1 .619-1.164L9.13 8.114c1.058-1.134 3.204-1.27 4.43-.278l3.501 2.831c.593.48 1.461.387 1.94-.207a1.384 1.384 0 0 0-.207-1.943l-3.5-2.831c-.8-.647-1.766-1.045-2.774-1.202l2.015-2.158A1.384 1.384 0 0 0 13.483 0zm-2.866 12.815a1.38 1.38 0 0 0-1.38 1.382 1.38 1.38 0 0 0 1.38 1.382H20.79a1.38 1.38 0 0 0 1.38-1.382 1.38 1.38 0 0 0-1.38-1.382z"/>
+                    </svg>
+                </a>
+            </td>
+            <td>
+                <span class="score-badge">${problem.score || '5/10'}</span>
+            </td>
+            <td class="note-cell">
+                 <button class="note-btn ${hasNote ? 'has-note' : ''}" onclick="openNoteModal('${probIdStr}')" title="${hasNote ? 'Edit Note' : 'Add Note'}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
                 </button>
             </td>
-            <td class="actions-col">
-                ${deleteButtonHtml}
+            <td>
+                <div class="status-cell">
+                    <input type="checkbox" 
+                        class="status-checkbox"
+                        id="p-${probIdStr}" 
+                        ${isCompleted ? 'checked' : ''} 
+                        onchange="toggleProblem('${probIdStr}', '${categoryId}')">
+                    ${deleteButtonHtml}
+                </div>
             </td>
         </tr>
     `;
@@ -1515,13 +1530,14 @@ function toggleCategory(categoryId) {
 }
 
 function toggleProblem(problemId, categoryId) {
-    if (completedProblems.has(problemId)) {
-        completedProblems.delete(problemId);
-        delete problemHistory[problemId];
+    const idStr = String(problemId);
+    if (completedProblems.has(idStr)) {
+        completedProblems.delete(idStr);
+        delete problemHistory[idStr];
     } else {
-        completedProblems.add(problemId);
-        if (!problemHistory[problemId]) {
-            problemHistory[problemId] = new Date().toISOString();
+        completedProblems.add(idStr);
+        if (!problemHistory[idStr]) {
+            problemHistory[idStr] = new Date().toISOString();
         }
     }
     
@@ -1530,9 +1546,9 @@ function toggleProblem(problemId, categoryId) {
     updateCategoryProgress(categoryId);
     updateAllTrackers();
     
-    if (completedProblems.has(problemId)) {
+    if (completedProblems.has(idStr)) {
         celebrateProblemComplete();
-        scheduleReview(problemId); // Trigger SRS
+        scheduleReview(idStr); // Trigger SRS
     }
 }
 
@@ -2021,7 +2037,7 @@ function loadMaangState() {
     try {
         const saved = localStorage.getItem('maang-tracker-completed');
         if (saved) {
-            maangCompletedProblems = new Set(JSON.parse(saved));
+            maangCompletedProblems = new Set(JSON.parse(saved).map(id => String(id)));
         }
     } catch (e) {
         console.error('Failed to load MAANG state:', e);
@@ -2156,13 +2172,28 @@ function updateTabCounts() {
             reviewBadge.style.display = 'none';
         }
     }
+    
+    // Also update the main progress card if visible
+    updateRoadmapProgress();
+}
+
+function updateRoadmapProgress() {
+    const total = getTotalProblemsCount();
+    const completed = getCompletedProblemsCount();
+    const percentage = total === 0 ? 0 : (completed / total) * 100;
+    
+    const textEl = document.getElementById('roadmap-progress-text');
+    const fillEl = document.getElementById('roadmap-progress-fill');
+    
+    if (textEl) textEl.textContent = `${completed} / ${total}`;
+    if (fillEl) fillEl.style.width = `${percentage}%`;
 }
 
 function getCompletedProblemsCount() {
     let completed = 0;
     getAllCategories().forEach(category => {
         getAllProblemsForCategory(category.id).forEach(problem => {
-            if (completedProblems.has(problem.id)) completed++;
+            if (completedProblems.has(String(problem.id))) completed++;
         });
     });
     return completed;
@@ -2179,7 +2210,7 @@ function getMaangCompletedProblemsCount() {
     if (typeof maangCategoriesData === 'undefined') return 0;
     maangCategoriesData.forEach(category => {
         category.problems.forEach(problem => {
-            if (maangCompletedProblems.has(problem.id)) completed++;
+            if (maangCompletedProblems.has(String(problem.id))) completed++;
         });
     });
     return completed;
@@ -2191,16 +2222,16 @@ function getMaangCategoryProgress(categoryId) {
     if (!category) return { total: 0, completed: 0, percentage: 0 };
     
     const total = category.problems.length;
-    let completed = 0;
+    let completedCount = 0;
     
     category.problems.forEach(problem => {
-        if (maangCompletedProblems.has(problem.id)) completed++;
+        if (maangCompletedProblems.has(String(problem.id))) completedCount++;
     });
     
     return {
         total,
-        completed,
-        percentage: total > 0 ? Math.round((completed / total) * 100) : 0
+        completed: completedCount,
+        percentage: total > 0 ? Math.round((completedCount / total) * 100) : 0
     };
 }
 
@@ -2267,9 +2298,10 @@ function renderMaangProblemsTable(category) {
 }
 
 function renderMaangProblemRow(problem, categoryId) {
-    const isCompleted = maangCompletedProblems.has(problem.id);
+    const probIdStr = String(problem.id);
+    const isCompleted = maangCompletedProblems.has(probIdStr);
     const difficultyClass = `difficulty-${problem.difficulty.toLowerCase()}`;
-    const hasNote = problemNotes[problem.id] && problemNotes[problem.id].trim().length > 0;
+    const hasNote = problemNotes[probIdStr] && problemNotes[probIdStr].trim().length > 0;
     
     return `
         <tr>
@@ -2297,7 +2329,7 @@ function renderMaangProblemRow(problem, categoryId) {
                 <span class="score-badge">${problem.score}</span>
             </td>
             <td class="note-cell">
-                <button class="note-btn ${hasNote ? 'has-note' : ''}" onclick="openNoteModal('${problem.id}')" title="${hasNote ? 'Edit Note' : 'Add Note'}">
+                <button class="note-btn ${hasNote ? 'has-note' : ''}" onclick="openNoteModal('${probIdStr}')" title="${hasNote ? 'Edit Note' : 'Add Note'}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
@@ -2310,7 +2342,7 @@ function renderMaangProblemRow(problem, categoryId) {
                         type="checkbox" 
                         class="status-checkbox" 
                         ${isCompleted ? 'checked' : ''} 
-                        onchange="toggleMaangProblem(${problem.id})"
+                        onchange="toggleMaangProblem('${probIdStr}')"
                         aria-label="Mark ${problem.name} as ${isCompleted ? 'incomplete' : 'complete'}"
                     >
                 </div>
@@ -2331,16 +2363,17 @@ function toggleMaangCategory(categoryId) {
 
 // ===== MAANG Problem Toggle =====
 function toggleMaangProblem(problemId) {
-    if (maangCompletedProblems.has(problemId)) {
-        maangCompletedProblems.delete(problemId);
-        if (problemHistory[problemId]) delete problemHistory[problemId];
+    const idStr = String(problemId);
+    if (maangCompletedProblems.has(idStr)) {
+        maangCompletedProblems.delete(idStr);
+        if (problemHistory[idStr]) delete problemHistory[idStr];
     } else {
-        maangCompletedProblems.add(problemId);
-        if (!problemHistory[problemId]) {
-            problemHistory[problemId] = new Date().toISOString();
+        maangCompletedProblems.add(idStr);
+        if (!problemHistory[idStr]) {
+            problemHistory[idStr] = new Date().toISOString();
         }
         celebrateProblemComplete();
-        scheduleReview(problemId); // Trigger SRS
+        scheduleReview(idStr); // Trigger SRS
     }
     
     saveMaangState();
@@ -2350,7 +2383,7 @@ function toggleMaangProblem(problemId) {
     
     // Update the category progress
     const category = maangCategoriesData.find(cat => 
-        cat.problems.some(p => p.id === problemId)
+        cat.problems.some(p => String(p.id) === idStr)
     );
     if (category) {
         const progress = getMaangCategoryProgress(category.id);
@@ -3007,9 +3040,8 @@ function getDueReviewsCount() {
     Object.keys(spacedRepetition).forEach(id => {
         // Check if problem is still marked as completed (same logic as renderReviewTab)
         const isCompleted = completedProblems.has(String(id)) || 
-                           completedProblems.has(Number(id)) || 
-                           maangCompletedProblems.has(String(id)) || 
-                           maangCompletedProblems.has(Number(id));
+                           maangCompletedProblems.has(String(id)) ||
+                           patternsCompletedProblems.has(String(id));
         
         if (!isCompleted) return;
         
@@ -3059,9 +3091,8 @@ function renderReviewTab() {
     Object.keys(spacedRepetition).forEach(id => {
         // Strict consistency check
         const isCompleted = completedProblems.has(String(id)) || 
-                           completedProblems.has(Number(id)) || 
-                           maangCompletedProblems.has(String(id)) || 
-                           maangCompletedProblems.has(Number(id));
+                           maangCompletedProblems.has(String(id)) ||
+                           patternsCompletedProblems.has(String(id));
                            
         if (!isCompleted) return; 
 
@@ -3875,7 +3906,7 @@ function loadPatternsState() {
     try {
         const saved = localStorage.getItem('leetcode-tracker-patterns-completed');
         if (saved) {
-            patternsCompletedProblems = new Set(JSON.parse(saved));
+            patternsCompletedProblems = new Set(JSON.parse(saved).map(id => String(id)));
         }
         
         const savedExpanded = localStorage.getItem('leetcode-tracker-patterns-expanded');

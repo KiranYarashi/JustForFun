@@ -118,9 +118,9 @@ class DataSyncAPI {
      */
     collectLocalProgress() {
         return {
-            completed: JSON.parse(localStorage.getItem('leetcode-tracker-completed') || '[]'),
-            maangCompleted: JSON.parse(localStorage.getItem('maang-tracker-completed') || '[]'),
-            patternsCompleted: JSON.parse(localStorage.getItem('leetcode-tracker-patterns-completed') || '[]'),
+            completed: JSON.parse(localStorage.getItem('leetcode-tracker-completed') || '[]').map(id => String(id)),
+            maangCompleted: JSON.parse(localStorage.getItem('maang-tracker-completed') || '[]').map(id => String(id)),
+            patternsCompleted: JSON.parse(localStorage.getItem('leetcode-tracker-patterns-completed') || '[]').map(id => String(id)),
             customProblems: JSON.parse(localStorage.getItem('leetcode-tracker-custom-problems') || '{}'),
             customSections: JSON.parse(localStorage.getItem('leetcode-tracker-custom-sections') || '[]'),
             // CRITICAL FIX: Use the correct key for custom patterns data structure
