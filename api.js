@@ -290,6 +290,7 @@ const sharedPatternsAPI = {
                     'x-user-id': userId
                 },
                 body: JSON.stringify({
+                    id: data.id,  // Pass id at top level for backend to use
                     type: type,
                     parentId: parentId,
                     createdBy: userId,
