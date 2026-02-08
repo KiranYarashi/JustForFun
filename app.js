@@ -1642,6 +1642,10 @@ function handleAddProblem(event) {
         
         // Save to shared API for global visibility
         if (authService.isAuthenticated() && typeof sharedPatternsAPI !== 'undefined') {
+            // Mark as shared so the cleanup logic can remove it if deleted
+            newProblem.isShared = true;
+            saveCustomProblems(); // Re-save with isShared flag
+            
             sharedPatternsAPI.add('problem', {
                 id: newProblem.id,
                 title: newProblem.name,
@@ -1827,6 +1831,10 @@ function handleAddSection(event) {
         
         // Save to shared API for global visibility
         if (authService.isAuthenticated() && typeof sharedPatternsAPI !== 'undefined') {
+            // Mark as shared so the cleanup logic can remove it if deleted
+            newTopic.isShared = true;
+            savePatternsCRUD(); // Re-save with isShared flag
+            
             sharedPatternsAPI.add('topic', { id: newTopic.id, title: title, icon: icon, subSections: [] })
                 .then(() => console.log('Shared topic saved'))
                 .catch(err => console.error('Failed to save to shared API:', err));
@@ -3604,6 +3612,10 @@ function handleAddSubSection(event) {
     
     // Save to shared API for global visibility
     if (authService.isAuthenticated() && typeof sharedPatternsAPI !== 'undefined') {
+        // Mark as shared so the cleanup logic can remove it if deleted
+        newPattern.isShared = true;
+        savePatternsCRUD(); // Re-save with isShared flag
+        
         sharedPatternsAPI.add('pattern', { 
             id: newPattern.id, 
             title: title, 
