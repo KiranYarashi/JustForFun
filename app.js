@@ -1049,28 +1049,7 @@ function closeAddSubSectionModal() {
     document.getElementById('add-sub-section-modal').classList.add('hidden');
 }
 
-function handleAddSubSection(event) {
-    event.preventDefault();
-    const parentId = document.getElementById('parent-section-id').value;
-    const title = document.getElementById('sub-section-title').value.trim();
-    
-    if (!title) return;
-    
-    const newDay = {
-        id: `custom-day-${Date.now()}`,
-        title: title,
-        problems: [],
-        isCustom: true
-    };
-    
-    if (!customPatternsData.customDays) customPatternsData.customDays = {};
-    if (!customPatternsData.customDays[parentId]) customPatternsData.customDays[parentId] = [];
-    
-    customPatternsData.customDays[parentId].push(newDay);
-    saveCustomPatternsData();
-    renderPatternsTab();
-    closeAddSubSectionModal();
-}
+// handleAddSubSection is defined later in the Patterns Tab section (line ~3600)
 
 function saveCustomPatternsData() {
     localStorage.setItem('leetcode-tracker-custom-patterns', JSON.stringify(customPatternsData));
@@ -3622,6 +3601,18 @@ function handleAddSubSection(event) {
     renderPatternsTab();
     updatePatternsProgress();
     closeAddSubSectionModal();
+    
+    // Save to shared API for global visibility
+    if (authService.isAuthenticated() && typeof sharedPatternsAPI !== 'undefined') {
+        sharedPatternsAPI.add('pattern', { 
+            id: newPattern.id, 
+            title: title, 
+            problems: [] 
+        }, parentId)
+            .then(() => console.log('Shared pattern saved'))
+            .catch(err => console.error('Failed to save pattern to shared API:', err));
+    }
+    
     showToast(`Pattern "${title}" added successfully!`);
 }
 
