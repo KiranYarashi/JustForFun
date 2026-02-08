@@ -93,10 +93,16 @@ module.exports = async function (context, req) {
         try {
             const containerRef = getContainer();
             
-            // First, find the document to check ownership
-            // We use the SDK to get the item directly to ensure we have the most up-to-date data
-            // Note: In a production app, we'd use a transaction or stored procedure for atomic cascade
-            const { resource: docToDelete } = await containerRef.item(id).read();
+            // Query to find the document since we don't know the partition key (type) beforehand
+            // Cross-partition query is needed because partition key is /type
+            const { resources } = await containerRef.items
+                .query({
+                    query: "SELECT * FROM c WHERE c.id = @id",
+                    parameters: [{ name: "@id", value: id }]
+                })
+                .fetchAll();
+            
+            const docToDelete = resources[0];
             
             if (!docToDelete) {
                 context.res = {

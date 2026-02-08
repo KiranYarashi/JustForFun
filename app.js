@@ -3826,6 +3826,61 @@ async function loadSharedPatternsContent() {
         let dirtyPatternsData = false;
         let dirtyCustomProblems = false;
 
+        // CRITICAL FIX: Build a set of shared item IDs from the API to detect deletions
+        const sharedTopicIds = new Set();
+        const sharedPatternIds = new Set();
+        const sharedProblemIds = new Set();
+        
+        if (sharedPatternsContent && sharedPatternsContent.length > 0) {
+            sharedPatternsContent.forEach(item => {
+                if (item.type === 'topic') sharedTopicIds.add(item.id);
+                else if (item.type === 'pattern') sharedPatternIds.add(item.id);
+                else if (item.type === 'problem') sharedProblemIds.add(item.id);
+            });
+        }
+        
+        // CLEANUP: Remove locally stored shared items that no longer exist in API
+        // Cleanup shared topics (weeks)
+        if (customPatternsData.weeks) {
+            const beforeCount = customPatternsData.weeks.length;
+            customPatternsData.weeks = customPatternsData.weeks.filter(week => {
+                if (week.isShared && !sharedTopicIds.has(week.id)) {
+                    console.log('Removing deleted shared topic:', week.id);
+                    return false;
+                }
+                return true;
+            });
+            if (customPatternsData.weeks.length !== beforeCount) dirtyPatternsData = true;
+        }
+        
+        // Cleanup shared patterns (customDays)
+        if (customPatternsData.customDays) {
+            Object.keys(customPatternsData.customDays).forEach(parentId => {
+                const beforeCount = customPatternsData.customDays[parentId].length;
+                customPatternsData.customDays[parentId] = customPatternsData.customDays[parentId].filter(pattern => {
+                    if (pattern.isShared && !sharedPatternIds.has(pattern.id)) {
+                        console.log('Removing deleted shared pattern:', pattern.id);
+                        return false;
+                    }
+                    return true;
+                });
+                if (customPatternsData.customDays[parentId].length !== beforeCount) dirtyPatternsData = true;
+            });
+        }
+        
+        // Cleanup shared problems (customProblems)
+        Object.keys(customProblems).forEach(patternId => {
+            const beforeCount = customProblems[patternId].length;
+            customProblems[patternId] = customProblems[patternId].filter(problem => {
+                if (problem.isShared && !sharedProblemIds.has(problem.id)) {
+                    console.log('Removing deleted shared problem:', problem.id);
+                    return false;
+                }
+                return true;
+            });
+            if (customProblems[patternId].length !== beforeCount) dirtyCustomProblems = true;
+        });
+
         // Merge shared content into local custom arrays
         if (sharedPatternsContent && sharedPatternsContent.length > 0) {
             sharedPatternsContent.forEach(item => {
