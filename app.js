@@ -3840,31 +3840,32 @@ async function loadSharedPatternsContent() {
         }
         
         // CLEANUP: Remove locally stored shared items that no longer exist in API
-        // Cleanup shared topics (weeks)
-        if (customPatternsData.weeks) {
-            const beforeCount = customPatternsData.weeks.length;
-            customPatternsData.weeks = customPatternsData.weeks.filter(week => {
-                if (week.isShared && !sharedTopicIds.has(week.id)) {
-                    console.log('Removing deleted shared topic:', week.id);
+        // Cleanup shared topics (customPatternsSections - the correct variable used by renderPatternsTab)
+        if (customPatternsSections && customPatternsSections.length > 0) {
+            const beforeCount = customPatternsSections.length;
+            customPatternsSections = customPatternsSections.filter(topic => {
+                if (topic.isShared && !sharedTopicIds.has(topic.id)) {
+                    console.log('Removing deleted shared topic:', topic.id);
                     return false;
                 }
                 return true;
             });
-            if (customPatternsData.weeks.length !== beforeCount) dirtyPatternsData = true;
+            if (customPatternsSections.length !== beforeCount) dirtyPatternsData = true;
         }
         
-        // Cleanup shared patterns (customDays)
-        if (customPatternsData.customDays) {
-            Object.keys(customPatternsData.customDays).forEach(parentId => {
-                const beforeCount = customPatternsData.customDays[parentId].length;
-                customPatternsData.customDays[parentId] = customPatternsData.customDays[parentId].filter(pattern => {
+        // Cleanup shared patterns (customPatternsSubSections - the correct variable used by renderPatternsTab)
+        if (customPatternsSubSections) {
+            Object.keys(customPatternsSubSections).forEach(parentId => {
+                if (!customPatternsSubSections[parentId]) return;
+                const beforeCount = customPatternsSubSections[parentId].length;
+                customPatternsSubSections[parentId] = customPatternsSubSections[parentId].filter(pattern => {
                     if (pattern.isShared && !sharedPatternIds.has(pattern.id)) {
                         console.log('Removing deleted shared pattern:', pattern.id);
                         return false;
                     }
                     return true;
                 });
-                if (customPatternsData.customDays[parentId].length !== beforeCount) dirtyPatternsData = true;
+                if (customPatternsSubSections[parentId].length !== beforeCount) dirtyPatternsData = true;
             });
         }
         
@@ -3885,16 +3886,14 @@ async function loadSharedPatternsContent() {
         if (sharedPatternsContent && sharedPatternsContent.length > 0) {
             sharedPatternsContent.forEach(item => {
                 if (item.type === 'topic') {
-                    // Add to customPatternsData.weeks if not already there
-                    if (!customPatternsData.weeks) customPatternsData.weeks = [];
-                    
-                    const exists = customPatternsData.weeks.some(s => s.id === item.id);
+                    // Add to customPatternsSections (the correct variable used by renderPatternsTab)
+                    const exists = customPatternsSections.some(s => s.id === item.id);
                     if (!exists) {
-                        customPatternsData.weeks.push({
+                        customPatternsSections.push({
                             id: item.id,
                             title: item.title,
-                            subSections: item.data.subSections || [], // Usually empty for new topic
-                            badge: item.data.badge || '🚀', // Default icon
+                            icon: item.data.badge || item.data.icon || '🚀',
+                            subSections: item.data.subSections || [],
                             isCustom: true,
                             isShared: true,
                             createdBy: item.createdBy
@@ -3902,18 +3901,16 @@ async function loadSharedPatternsContent() {
                         dirtyPatternsData = true;
                     }
                 } else if (item.type === 'pattern') {
-                    // Add to customPatternsData.customDays
-                    // Logic: key is parentId (Week ID)
+                    // Add to customPatternsSubSections (the correct variable used by renderPatternsTab)
                     const parentId = item.parentId;
                     if (parentId) {
-                        if (!customPatternsData.customDays) customPatternsData.customDays = {};
-                        if (!customPatternsData.customDays[parentId]) {
-                            customPatternsData.customDays[parentId] = [];
+                        if (!customPatternsSubSections[parentId]) {
+                            customPatternsSubSections[parentId] = [];
                         }
                         
-                        const exists = customPatternsData.customDays[parentId].some(s => s.id === item.id);
+                        const exists = customPatternsSubSections[parentId].some(s => s.id === item.id);
                         if (!exists) {
-                            customPatternsData.customDays[parentId].push({
+                            customPatternsSubSections[parentId].push({
                                 id: item.id,
                                 title: item.title,
                                 problems: item.data.problems || [],
@@ -3926,7 +3923,7 @@ async function loadSharedPatternsContent() {
                     }
                 } else if (item.type === 'problem') {
                     // Add to customProblems
-                    const patternId = item.parentId; // This is day/subsection ID
+                    const patternId = item.parentId;
                     if (patternId) {
                         if (!customProblems[patternId]) {
                             customProblems[patternId] = [];
@@ -3951,7 +3948,7 @@ async function loadSharedPatternsContent() {
             
             // Persist changes so they survive reload even if API fails next time
             if (dirtyPatternsData) {
-                saveCustomPatternsData();
+                savePatternsCRUD();
             }
             if (dirtyCustomProblems) {
                 saveCustomProblems();
